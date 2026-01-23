@@ -207,7 +207,7 @@ export const RegisterPageNew: React.FC = () => {
                     value={formData.fullName}
                     onChange={handleInputChange}
                     placeholder="John Doe"
-                    className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition ${
+                    className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition bg-white text-gray-900 ${
                       errors.fullName ? 'border-red-500' : 'border-gray-300'
                     }`}
                   />
@@ -233,7 +233,7 @@ export const RegisterPageNew: React.FC = () => {
                     value={formData.username}
                     onChange={handleInputChange}
                     placeholder="johndoe123"
-                    className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition ${
+                    className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition bg-white text-gray-900 ${
                       errors.username ? 'border-red-500' : 'border-gray-300'
                     }`}
                   />
@@ -259,7 +259,7 @@ export const RegisterPageNew: React.FC = () => {
                     value={formData.email}
                     onChange={handleInputChange}
                     placeholder="john@example.com"
-                    className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition ${
+                    className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition bg-white text-gray-900 ${
                       errors.email ? 'border-red-500' : 'border-gray-300'
                     }`}
                   />
@@ -285,7 +285,7 @@ export const RegisterPageNew: React.FC = () => {
                     value={formData.phoneNumber}
                     onChange={handleInputChange}
                     placeholder="+1234567890"
-                    className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition ${
+                    className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition bg-white text-gray-900 ${
                       errors.phoneNumber ? 'border-red-500' : 'border-gray-300'
                     }`}
                   />
@@ -311,7 +311,7 @@ export const RegisterPageNew: React.FC = () => {
                     value={formData.referralCode || ''}
                     onChange={handleInputChange}
                     placeholder="e.g., MAN8493"
-                    className="w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition border-gray-300"
+                    className="w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition border-gray-300 bg-white text-gray-900"
                   />
                 </div>
                 <p className="text-gray-500 text-xs mt-1">Have a referral? Enter the code to link it.</p>
@@ -326,7 +326,7 @@ export const RegisterPageNew: React.FC = () => {
                   name="country"
                   value={formData.country}
                   onChange={handleInputChange}
-                  className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition ${
+                  className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition bg-white text-gray-900 ${
                     errors.country ? 'border-red-500' : 'border-gray-300'
                   }`}
                 >
@@ -358,7 +358,7 @@ export const RegisterPageNew: React.FC = () => {
                     value={formData.password}
                     onChange={handleInputChange}
                     placeholder="••••••••"
-                    className={`w-full pl-10 pr-10 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition ${
+                    className={`w-full pl-10 pr-10 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition bg-white text-gray-900 ${
                       errors.password ? 'border-red-500' : 'border-gray-300'
                     }`}
                   />
@@ -391,7 +391,7 @@ export const RegisterPageNew: React.FC = () => {
                     value={formData.confirmPassword}
                     onChange={handleInputChange}
                     placeholder="••••••••"
-                    className={`w-full pl-10 pr-10 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition ${
+                    className={`w-full pl-10 pr-10 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition bg-white text-gray-900 ${
                       errors.confirmPassword ? 'border-red-500' : 'border-gray-300'
                     }`}
                   />

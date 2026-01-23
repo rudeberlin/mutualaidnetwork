@@ -5,7 +5,7 @@ const INACTIVITY_TIMEOUT = 10 * 60 * 1000; // 10 minutes in milliseconds
 
 export const useAutoLogout = () => {
   const { isAuthenticated, logout } = useAuthStore();
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const resetTimer = () => {
     // Clear existing timeout
