@@ -4,7 +4,9 @@ import { Mail, Lock, Eye, EyeOff, CheckCircle } from 'lucide-react';
 import { Navbar } from '../components/Navbar';
 import { Testimonials } from '../components/Testimonials';
 import { useAuthStore } from '../store';
-import { MOCK_CURRENT_USER } from '../utils/mockData';
+import axios from 'axios';
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 export const LoginPage: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -27,17 +29,21 @@ export const LoginPage: React.FC = () => {
       return;
     }
 
-    if (password.length < 6) {
-      setError('Invalid credentials');
-      setIsLoading(false);
-      return;
-    }
+    try {
+      const response = await axios.post(`${API_URL}/api/login`, {
+        email,
+        password,
+      });
 
-    setTimeout(() => {
-      setUser(MOCK_CURRENT_USER);
-      setToken('mock-token-12345');
-      navigate('/dashboard');
-    }, 1000);
+      if (response.data.success) {
+        setUser(response.data.data.user);
+        setToken(response.data.data.token);
+        navigate('/dashboard');
+      }
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Login failed. Please try again.');
+      setIsLoading(false);
+    }
   };
 
   return (
