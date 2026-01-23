@@ -59,11 +59,14 @@ const upload = multer({
 const mockDatabase = {
   users: [],
   transactions: [],
+  verifications: [],
+  helpActivities: [],
+  payments: [],
   packages: [
-    { id: 'pkg-1', name: 'Basic', amount: 25, returnPercentage: 30, durationDays: 3 },
-    { id: 'pkg-2', name: 'Bronze', amount: 100, returnPercentage: 30, durationDays: 5 },
-    { id: 'pkg-3', name: 'Silver', amount: 250, returnPercentage: 50, durationDays: 15 },
-    { id: 'pkg-4', name: 'Gold', amount: 500, returnPercentage: 50, durationDays: 15 },
+    { id: 'pkg-1', name: 'Basic', amount: 25, returnPercentage: 30, durationDays: 3, active: true, description: 'Perfect for beginners' },
+    { id: 'pkg-2', name: 'Bronze', amount: 100, returnPercentage: 30, durationDays: 5, active: true, description: 'Great value package' },
+    { id: 'pkg-3', name: 'Silver', amount: 250, returnPercentage: 50, durationDays: 15, active: true, description: 'Most popular choice' },
+    { id: 'pkg-4', name: 'Gold', amount: 500, returnPercentage: 50, durationDays: 15, active: true, description: 'Premium package' },
   ],
 };
 
@@ -117,7 +120,7 @@ app.get('/api/packages', (req, res) => {
 // POST register
 app.post('/api/register', upload.fields([{ name: 'idFront' }, { name: 'idBack' }]), (req, res) => {
   try {
-    const { fullName, username, email, phoneNumber, country, password, confirmPassword } =
+    const { fullName, username, email, phoneNumber, country, password, confirmPassword, referralCode } =
       req.body;
 
     // Validation
@@ -137,6 +140,9 @@ app.post('/api/register', upload.fields([{ name: 'idFront' }, { name: 'idBack' }
     // Hash password
     const hashedPassword = bcryptjs.hashSync(password, 10);
 
+    // Generate unique referral code for new user
+    const userReferralCode = `MAN${Math.floor(1000 + Math.random() * 9000)}`;
+
     // Create user
     const newUser = {
       id: `user-${Date.now()}`,
@@ -146,7 +152,10 @@ app.post('/api/register', upload.fields([{ name: 'idFront' }, { name: 'idBack' }
       phoneNumber,
       country,
       passwordHash: hashedPassword,
+      referralCode: referralCode || undefined,
+      myReferralCode: userReferralCode,
       profilePhoto: `https://api.dicebear.com/7.x/avataaars/svg?seed=${username}`,
+      role: 'member',
       idDocuments: {
         frontImage: req.files?.idFront
           ? `/uploads/${req.files.idFront[0].filename}`
@@ -322,6 +331,78 @@ app.post('/api/upload', upload.single('file'), (req, res) => {
   }
 });
 
+// Admin middleware
+const requireAdmin = (req, res, next) => {
+  const user = mockDatabase.users.find((u) => u.id === req.userId);
+  if (!user || user.role !== 'admin') {
+    return res.status(403).json({ success: false, error: 'Admin access required' });
+  }
+  next();
+};
+
+// Admin routes
+app.get('/api/admin/users', authenticateToken, requireAdmin, (req, res) => {
+  const users = mockDatabase.users.map(u => ({ ...u, passwordHash: undefined }));
+  res.json({ success: true, data: users });
+});
+
+app.get('/api/admin/verifications', authenticateToken, requireAdmin, (req, res) => {
+  const verifications = mockDatabase.users
+    .filter(u => !u.isVerified && u.idDocuments?.frontImage)
+    .map(u => ({
+      id: `ver-${u.id}`,
+      userId: u.id,
+      userName: u.fullName,
+      email: u.email,
+      idFront: u.idDocuments.frontImage,
+      idBack: u.idDocuments.backImage,
+      submittedAt: u.idDocuments.uploadedAt,
+      status: 'pending'
+    }));
+  res.json({ success: true, data: verifications });
+});
+
+app.post('/api/admin/verify-user/:userId', authenticateToken, requireAdmin, (req, res) => {
+  const user = mockDatabase.users.find(u => u.id === req.params.userId);
+  if (!user) {
+    return res.status(404).json({ success: false, error: 'User not found' });
+  }
+  user.isVerified = true;
+  user.idDocuments.verified = true;
+  res.json({ success: true, message: 'User verified successfully' });
+});
+
+app.get('/api/admin/transactions', authenticateToken, requireAdmin, (req, res) => {
+  res.json({ success: true, data: mockDatabase.transactions });
+});
+
+app.get('/api/admin/payments', authenticateToken, requireAdmin, (req, res) => {
+  res.json({ success: true, data: mockDatabase.payments });
+});
+
+app.get('/api/admin/help-activities', authenticateToken, requireAdmin, (req, res) => {
+  res.json({ success: true, data: mockDatabase.helpActivities });
+});
+
+app.put('/api/admin/packages/:id', authenticateToken, requireAdmin, (req, res) => {
+  const pkg = mockDatabase.packages.find(p => p.id === req.params.id);
+  if (!pkg) {
+    return res.status(404).json({ success: false, error: 'Package not found' });
+  }
+  Object.assign(pkg, req.body);
+  res.json({ success: true, data: pkg });
+});
+
+// Serve static files in production
+if (process.env.NODE_ENV === 'production') {
+  const distPath = path.join(__dirname, '../dist');
+  app.use(express.static(distPath));
+  
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(distPath, 'index.html'));
+  });
+}
+
 // Error handling middleware
 app.use((error, req, res, next) => {
   if (error instanceof multer.MulterError) {
@@ -334,4 +415,5 @@ app.use((error, req, res, next) => {
 app.listen(PORT, () => {
   console.log(`✨ Mutual Aid Network Server running on http://localhost:${PORT}`);
   console.log(`📚 Health check: http://localhost:${PORT}/api/health`);
+  console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
 });
