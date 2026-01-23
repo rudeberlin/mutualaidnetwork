@@ -7,6 +7,7 @@ import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
+import pool, { initializeDatabase } from './database.js';
 
 // Load environment variables
 dotenv.config();
@@ -34,6 +35,51 @@ if (!fs.existsSync(uploadsDir)) {
 
 app.use('/uploads', express.static('uploads'));
 
+// JWT helpers
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
+
+const generateToken = (userId) => {
+  return jwt.sign({ userId }, JWT_SECRET, { expiresIn: '10m' }); // 10 minutes
+};
+
+const verifyToken = (token) => {
+  try {
+    return jwt.verify(token, JWT_SECRET);
+  } catch (error) {
+    return null;
+  }
+};
+
+const authenticateToken = (req, res, next) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+
+  if (!token) {
+    return res.status(401).json({ success: false, error: 'Access token required' });
+  }
+
+  const verified = verifyToken(token);
+  if (!verified) {
+    return res.status(401).json({ success: false, error: 'Session expired. Please login again.' });
+  }
+
+  req.userId = verified.userId;
+  next();
+};
+
+// Admin middleware
+const requireAdmin = async (req, res, next) => {
+  try {
+    const result = await pool.query('SELECT role FROM users WHERE id = $1', [req.userId]);
+    if (result.rows.length === 0 || result.rows[0].role !== 'admin') {
+      return res.status(403).json({ success: false, error: 'Admin access required' });
+    }
+    next();
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
 // Configure multer for file uploads
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -58,70 +104,28 @@ const upload = multer({
   },
 });
 
-// Mock database (in-memory storage)
-const mockDatabase = {
-  users: [],
-  transactions: [],
-  verifications: [],
-  helpActivities: [],
-  payments: [],
-  packages: [
-    { id: 'pkg-1', name: 'Basic', amount: 25, returnPercentage: 30, durationDays: 3, active: true, description: 'Perfect for beginners' },
-    { id: 'pkg-2', name: 'Bronze', amount: 100, returnPercentage: 30, durationDays: 5, active: true, description: 'Great value package' },
-    { id: 'pkg-3', name: 'Silver', amount: 250, returnPercentage: 50, durationDays: 15, active: true, description: 'Most popular choice' },
-    { id: 'pkg-4', name: 'Gold', amount: 500, returnPercentage: 50, durationDays: 15, active: true, description: 'Premium package' },
-  ],
-};
-
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
-
-// Helper functions
-const generateToken = (userId) => {
-  return jwt.sign({ userId }, JWT_SECRET, { expiresIn: '7d' });
-};
-
-const verifyToken = (token) => {
-  try {
-    return jwt.verify(token, JWT_SECRET);
-  } catch (error) {
-    return null;
-  }
-};
-
-const authenticateToken = (req, res, next) => {
-  const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1];
-
-  if (!token) {
-    return res.status(401).json({ success: false, error: 'Access token required' });
-  }
-
-  const verified = verifyToken(token);
-  if (!verified) {
-    return res.status(403).json({ success: false, error: 'Invalid or expired token' });
-  }
-
-  req.userId = verified.userId;
-  next();
-};
-
 // Routes
 
 // Health check
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'Server is running' });
+  res.json({ status: 'ok', message: 'Server is running' });
 });
 
 // GET all packages
-app.get('/api/packages', (req, res) => {
-  res.json({
-    success: true,
-    data: mockDatabase.packages,
-  });
+app.get('/api/packages', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM packages WHERE active = true ORDER BY amount ASC');
+    res.json({
+      success: true,
+      data: result.rows,
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
 });
 
 // POST register
-app.post('/api/register', upload.fields([{ name: 'idFront' }, { name: 'idBack' }]), (req, res) => {
+app.post('/api/register', upload.fields([{ name: 'idFront' }, { name: 'idBack' }]), async (req, res) => {
   try {
     const { fullName, username, email, phoneNumber, country, password, confirmPassword, referralCode } =
       req.body;
@@ -136,8 +140,9 @@ app.post('/api/register', upload.fields([{ name: 'idFront' }, { name: 'idBack' }
     }
 
     // Check if user exists
-    if (mockDatabase.users.find((u) => u.email === email)) {
-      return res.status(400).json({ success: false, error: 'Email already registered' });
+    const existingUser = await pool.query('SELECT id FROM users WHERE email = $1 OR username = $2', [email, username]);
+    if (existingUser.rows.length > 0) {
+      return res.status(400).json({ success: false, error: 'Email or username already registered' });
     }
 
     // Hash password
@@ -147,53 +152,42 @@ app.post('/api/register', upload.fields([{ name: 'idFront' }, { name: 'idBack' }
     const userReferralCode = `MAN${Math.floor(1000 + Math.random() * 9000)}`;
 
     // Create user
-    const newUser = {
-      id: `user-${Date.now()}`,
-      fullName,
-      username,
-      email,
-      phoneNumber,
-      country,
-      passwordHash: hashedPassword,
-      referralCode: referralCode || undefined,
-      myReferralCode: userReferralCode,
-      profilePhoto: `https://api.dicebear.com/7.x/avataaars/svg?seed=${username}`,
-      role: 'member',
-      idDocuments: {
-        frontImage: req.files?.idFront
-          ? `/uploads/${req.files.idFront[0].filename}`
-          : null,
-        backImage: req.files?.idBack
-          ? `/uploads/${req.files.idBack[0].filename}`
-          : null,
-        uploadedAt: new Date(),
-        verified: false,
-      },
-      isVerified: false,
-      paymentMethodVerified: false,
-      totalEarnings: 0,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
+    const userId = `user-${Date.now()}`;
+    const profilePhoto = `https://api.dicebear.com/7.x/avataaars/svg?seed=${username}`;
 
-    mockDatabase.users.push(newUser);
+    const result = await pool.query(`
+      INSERT INTO users (
+        id, full_name, username, email, phone_number, country, referral_code, 
+        my_referral_code, password_hash, profile_photo, role, 
+        id_front_image, id_back_image, id_verified, is_verified, 
+        payment_method_verified, total_earnings
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+      RETURNING id, full_name, username, email, phone_number, country, my_referral_code, profile_photo, role, is_verified, payment_method_verified, total_earnings, created_at
+    `, [
+      userId, fullName, username, email, phoneNumber, country, referralCode || null,
+      userReferralCode, hashedPassword, profilePhoto, 'member',
+      req.files?.idFront ? `/uploads/${req.files.idFront[0].filename}` : null,
+      req.files?.idBack ? `/uploads/${req.files.idBack[0].filename}` : null,
+      false, false, false, 0
+    ]);
 
-    const token = generateToken(newUser.id);
+    const token = generateToken(userId);
     res.status(201).json({
       success: true,
       message: 'User registered successfully',
       data: {
-        user: { ...newUser, passwordHash: undefined },
+        user: result.rows[0],
         token,
       },
     });
   } catch (error) {
+    console.error('Registration error:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
 
 // POST login
-app.post('/api/login', (req, res) => {
+app.post('/api/login', async (req, res) => {
   try {
     const { email, password } = req.body;
 
@@ -201,41 +195,49 @@ app.post('/api/login', (req, res) => {
       return res.status(400).json({ success: false, error: 'Email and password required' });
     }
 
-    const user = mockDatabase.users.find((u) => u.email === email);
-    if (!user) {
-      return res.status(401).json({ success: false, error: 'Invalid credentials' });
+    const result = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
+    
+    if (result.rows.length === 0) {
+      return res.status(401).json({ success: false, error: 'Invalid email or password' });
     }
 
-    const passwordMatch = bcryptjs.compareSync(password, user.passwordHash);
+    const user = result.rows[0];
+    const passwordMatch = bcryptjs.compareSync(password, user.password_hash);
+    
     if (!passwordMatch) {
-      return res.status(401).json({ success: false, error: 'Invalid credentials' });
+      return res.status(401).json({ success: false, error: 'Invalid email or password' });
     }
 
     const token = generateToken(user.id);
+    
+    // Remove password_hash from response
+    const { password_hash, ...userWithoutPassword } = user;
+    
     res.json({
       success: true,
       data: {
-        user: { ...user, passwordHash: undefined },
+        user: userWithoutPassword,
         token,
       },
     });
   } catch (error) {
+    console.error('Login error:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
 
 // GET user by ID
-app.get('/api/user/:id', authenticateToken, (req, res) => {
+app.get('/api/user/:id', authenticateToken, async (req, res) => {
   try {
-    const user = mockDatabase.users.find((u) => u.id === req.params.id);
+    const result = await pool.query('SELECT id, full_name, username, email, phone_number, country, my_referral_code, profile_photo, role, is_verified, payment_method_verified, total_earnings, created_at FROM users WHERE id = $1', [req.params.id]);
 
-    if (!user) {
+    if (result.rows.length === 0) {
       return res.status(404).json({ success: false, error: 'User not found' });
     }
 
     res.json({
       success: true,
-      data: { ...user, passwordHash: undefined },
+      data: result.rows[0],
     });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
@@ -243,12 +245,15 @@ app.get('/api/user/:id', authenticateToken, (req, res) => {
 });
 
 // GET transactions for user
-app.get('/api/transactions/:userId', authenticateToken, (req, res) => {
+app.get('/api/transactions/:userId', authenticateToken, async (req, res) => {
   try {
-    const transactions = mockDatabase.transactions.filter((t) => t.userId === req.params.userId);
+    if (req.userId !== req.params.userId && req.userRole !== 'admin') {
+      return res.status(403).json({ success: false, error: 'Unauthorized' });
+    }
+    const result = await pool.query('SELECT * FROM transactions WHERE user_id = $1 ORDER BY created_at DESC', [req.params.userId]);
     res.json({
       success: true,
-      data: transactions,
+      data: result.rows,
     });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
@@ -256,27 +261,22 @@ app.get('/api/transactions/:userId', authenticateToken, (req, res) => {
 });
 
 // POST create transaction
-app.post('/api/transactions', authenticateToken, (req, res) => {
+app.post('/api/transactions', authenticateToken, async (req, res) => {
   try {
     const { userId, type, amount, currency, description } = req.body;
+    if (req.userId !== userId && req.userRole !== 'admin') {
+      return res.status(403).json({ success: false, error: 'Unauthorized' });
+    }
 
-    const transaction = {
-      id: `txn-${Date.now()}`,
-      userId,
-      type,
-      amount,
-      currency,
-      status: 'COMPLETED',
-      description,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-
-    mockDatabase.transactions.push(transaction);
+    const result = await pool.query(`
+      INSERT INTO transactions (user_id, type, amount, currency, status, description)
+      VALUES ($1, $2, $3, $4, 'completed', $5)
+      RETURNING *
+    `, [userId, type, amount, currency || 'USD', description || '']);
 
     res.status(201).json({
       success: true,
-      data: transaction,
+      data: result.rows[0],
     });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
@@ -284,30 +284,30 @@ app.post('/api/transactions', authenticateToken, (req, res) => {
 });
 
 // POST help request
-app.post('/api/help/request', authenticateToken, (req, res) => {
+app.post('/api/help/request', authenticateToken, async (req, res) => {
   try {
     const { giverId, receiverId, packageId, paymentMethod } = req.body;
 
-    const pkg = mockDatabase.packages.find((p) => p.id === packageId);
-    if (!pkg) {
+    const pkgResult = await pool.query('SELECT * FROM packages WHERE id = $1', [packageId]);
+    if (pkgResult.rows.length === 0) {
       return res.status(404).json({ success: false, error: 'Package not found' });
     }
+    const pkg = pkgResult.rows[0];
 
-    const helpRecord = {
-      id: `help-${Date.now()}`,
-      giverId,
-      receiverId,
-      packageId,
-      amount: pkg.amount,
-      paymentMethod,
-      status: 'ACTIVE',
-      createdAt: new Date(),
-    };
+    const result = await pool.query(`
+      INSERT INTO help_activities (giver_id, receiver_id, package_id, amount, payment_method, status)
+      VALUES ($1, $2, $3, $4, $5, 'active')
+      RETURNING *
+    `, [giverId, receiverId, packageId, pkg.amount, paymentMethod]);
 
     res.status(201).json({
       success: true,
+      data: result.rows[0],
+    });
       message: 'Help request created successfully',
-      data: helpRecord,
+    res.status(201).json({
+      success: true,
+      data: result.rows[0],
     });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
@@ -334,66 +334,91 @@ app.post('/api/upload', upload.single('file'), (req, res) => {
   }
 });
 
-// Admin middleware
-const requireAdmin = (req, res, next) => {
-  const user = mockDatabase.users.find((u) => u.id === req.userId);
-  if (!user || user.role !== 'admin') {
-    return res.status(403).json({ success: false, error: 'Admin access required' });
-  }
-  next();
-};
-
 // Admin routes
-app.get('/api/admin/users', authenticateToken, requireAdmin, (req, res) => {
-  const users = mockDatabase.users.map(u => ({ ...u, passwordHash: undefined }));
-  res.json({ success: true, data: users });
-});
-
-app.get('/api/admin/verifications', authenticateToken, requireAdmin, (req, res) => {
-  const verifications = mockDatabase.users
-    .filter(u => !u.isVerified && u.idDocuments?.frontImage)
-    .map(u => ({
-      id: `ver-${u.id}`,
-      userId: u.id,
-      userName: u.fullName,
-      email: u.email,
-      idFront: u.idDocuments.frontImage,
-      idBack: u.idDocuments.backImage,
-      submittedAt: u.idDocuments.uploadedAt,
-      status: 'pending'
-    }));
-  res.json({ success: true, data: verifications });
-});
-
-app.post('/api/admin/verify-user/:userId', authenticateToken, requireAdmin, (req, res) => {
-  const user = mockDatabase.users.find(u => u.id === req.params.userId);
-  if (!user) {
-    return res.status(404).json({ success: false, error: 'User not found' });
+app.get('/api/admin/users', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const result = await pool.query('SELECT id, full_name, username, email, phone_number, country, role, is_verified, payment_method_verified, total_earnings, created_at FROM users ORDER BY created_at DESC');
+    res.json({ success: true, data: result.rows });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
   }
-  user.isVerified = true;
-  user.idDocuments.verified = true;
-  res.json({ success: true, message: 'User verified successfully' });
 });
 
-app.get('/api/admin/transactions', authenticateToken, requireAdmin, (req, res) => {
-  res.json({ success: true, data: mockDatabase.transactions });
-});
-
-app.get('/api/admin/payments', authenticateToken, requireAdmin, (req, res) => {
-  res.json({ success: true, data: mockDatabase.payments });
-});
-
-app.get('/api/admin/help-activities', authenticateToken, requireAdmin, (req, res) => {
-  res.json({ success: true, data: mockDatabase.helpActivities });
-});
-
-app.put('/api/admin/packages/:id', authenticateToken, requireAdmin, (req, res) => {
-  const pkg = mockDatabase.packages.find(p => p.id === req.params.id);
-  if (!pkg) {
-    return res.status(404).json({ success: false, error: 'Package not found' });
+app.get('/api/admin/verifications', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT id, full_name as user_name, email, id_front_image, id_back_image, created_at as submitted_at 
+      FROM users 
+      WHERE is_verified = false AND id_front_image IS NOT NULL
+      ORDER BY created_at DESC
+    `);
+    res.json({ success: true, data: result.rows });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
   }
-  Object.assign(pkg, req.body);
-  res.json({ success: true, data: pkg });
+});
+
+app.post('/api/admin/verify-user/:userId', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const result = await pool.query('UPDATE users SET is_verified = true, id_verified = true WHERE id = $1 RETURNING id', [req.params.userId]);
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'User not found' });
+    }
+    res.json({ success: true, message: 'User verified successfully' });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.get('/api/admin/transactions', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM transactions ORDER BY created_at DESC LIMIT 100');
+    res.json({ success: true, data: result.rows });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.get('/api/admin/payments', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM payment_methods ORDER BY added_at DESC');
+    res.json({ success: true, data: result.rows });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.get('/api/admin/help-activities', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM help_activities ORDER BY created_at DESC');
+    res.json({ success: true, data: result.rows });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.put('/api/admin/packages/:id', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { name, amount, return_percentage, duration_days, description, active } = req.body;
+    const result = await pool.query(`
+      UPDATE packages 
+      SET name = COALESCE($1, name), 
+          amount = COALESCE($2, amount), 
+          return_percentage = COALESCE($3, return_percentage),
+          duration_days = COALESCE($4, duration_days),
+          description = COALESCE($5, description),
+          active = COALESCE($6, active)
+      WHERE id = $7
+      RETURNING *
+    `, [name, amount, return_percentage, duration_days, description, active, req.params.id]);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Package not found' });
+    }
+    res.json({ success: true, data: result.rows[0] });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
 });
 
 // Serve static files ONLY in monolithic deployment
@@ -416,9 +441,18 @@ app.use((error, req, res, next) => {
 });
 
 // Start server
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
   console.log(`✨ Mutual Aid Network Server running on http://localhost:${PORT}`);
   console.log(`📚 Health check: http://localhost:${PORT}/api/health`);
   console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`🔗 CORS allowed origin: ${process.env.CLIENT_URL || 'http://localhost:5173'}`);
+  
+  // Initialize database
+  try {
+    console.log('🔄 Initializing database...');
+    await initializeDatabase();
+    console.log('✅ Database initialized successfully');
+  } catch (error) {
+    console.error('❌ Database initialization failed:', error);
+  }
 });

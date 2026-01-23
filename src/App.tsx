@@ -18,6 +18,7 @@ import { AdminPackages } from './pages/admin/AdminPackages';
 import { AdminReports } from './pages/admin/AdminReports';
 import { AdminSettings } from './pages/admin/AdminSettings';
 import { useAuthStore } from './store';
+import { useAutoLogout } from './hooks/useAutoLogout';
 import './App.css';
 
 const AdminRoute: React.FC<{ children: React.ReactElement }> = ({ children }) => {
@@ -29,6 +30,8 @@ const AdminRoute: React.FC<{ children: React.ReactElement }> = ({ children }) =>
 };
 
 function App() {
+  // Auto-logout after 10 minutes of inactivity
+  useAutoLogout();
 
   return (
     <>
