@@ -1,0 +1,14 @@
+{
+  "name": "payment-platform",
+  "region": ["sfo"],
+  "public": true,
+  "env": [
+    {
+      "key": "VITE_API_URL",
+      "value": "https://your-api-domain.com"
+    }
+  ],
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "framework": "vite"
+}

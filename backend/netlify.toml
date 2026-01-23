@@ -1,0 +1,14 @@
+{
+  "build": {
+    "command": "npm run build",
+    "functions": {
+      "api/**/*.js": {
+        "memory": 1024,
+        "timeout": 60
+      }
+    }
+  },
+  "env": {
+    "NODE_VERSION": "18.x"
+  }
+}

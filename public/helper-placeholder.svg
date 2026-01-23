@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 300" width="300" height="300">
+  <defs>
+    <linearGradient id="helperGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1f2937;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#111827;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <rect fill="url(#helperGrad)" width="300" height="300"/>
+  <circle cx="150" cy="90" r="50" fill="#10b981" opacity="0.3"/>
+  <circle cx="150" cy="90" r="45" fill="none" stroke="#10b981" stroke-width="2" opacity="0.5"/>
+  <path d="M 130 75 Q 150 70 170 75" stroke="#10b981" stroke-width="3" fill="none" stroke-linecap="round" opacity="0.6"/>
+  <circle cx="120" cy="180" r="12" fill="#10b981" opacity="0.4"/>
+  <circle cx="180" cy="180" r="12" fill="#10b981" opacity="0.4"/>
+  <path d="M 120 195 Q 150 210 180 195" stroke="#10b981" stroke-width="3" fill="none" stroke-linecap="round" opacity="0.5"/>
+  <text x="150" y="280" font-size="24" text-anchor="middle" fill="#10b981" opacity="0.6">👤 Helper Profile</text>
+</svg>

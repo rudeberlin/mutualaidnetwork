@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" width="400" height="300">
+  <defs>
+    <linearGradient id="whatWeDo" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#10b981;stop-opacity:0.2" />
+      <stop offset="100%" style="stop-color:#0d9488;stop-opacity:0.2" />
+    </linearGradient>
+  </defs>
+  <rect width="400" height="300" fill="#1e293b"/>
+  <rect width="400" height="300" fill="url(#whatWeDo)"/>
+  
+  <!-- Multiple hands holding together -->
+  <g opacity="0.5">
+    <path d="M 80 150 L 70 120 L 75 100 L 90 105 L 100 135 Z" fill="#10b981" stroke="#10b981" stroke-width="2"/>
+    <path d="M 150 140 L 140 105 L 150 85 L 165 90 L 170 140 Z" fill="#14b8a6" stroke="#14b8a6" stroke-width="2"/>
+    <path d="M 220 150 L 210 115 L 220 95 L 235 100 L 245 145 Z" fill="#10b981" stroke="#10b981" stroke-width="2"/>
+    <path d="M 290 155 L 280 120 L 290 100 L 305 105 L 315 150 Z" fill="#14b8a6" stroke="#14b8a6" stroke-width="2"/>
+  </g>
+  
+  <!-- Circle at center -->
+  <circle cx="200" cy="180" r="50" fill="none" stroke="#10b981" stroke-width="3" opacity="0.4"/>
+  <circle cx="200" cy="180" r="40" fill="none" stroke="#14b8a6" stroke-width="2" opacity="0.3" stroke-dasharray="5,5"/>
+  
+  <!-- Text label -->
+  <text x="200" y="280" font-size="24" text-anchor="middle" fill="#10b981" opacity="0.6" font-weight="bold">Community First</text>
+</svg>

@@ -1,0 +1,101 @@
+import React, { useState } from 'react';
+import { useAdminStore } from '../../store/adminStore';
+import { ShieldCheck, XCircle } from 'lucide-react';
+import { format } from 'date-fns';
+
+export const AdminVerifications: React.FC = () => {
+  const { verifications, approveVerification, rejectVerification } = useAdminStore();
+  const [rejectReason, setRejectReason] = useState('');
+
+  const handleApprove = (id: string) => approveVerification(id, 'Admin');
+  const handleReject = (id: string) => {
+    const reason = rejectReason || 'Insufficient clarity on ID';
+    rejectVerification(id, reason, 'Admin');
+    setRejectReason('');
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-emerald-300 text-sm">KYC queue</p>
+          <h1 className="text-2xl font-bold text-white">Verifications</h1>
+        </div>
+      </div>
+
+      <div className="overflow-x-auto bg-white/5 border border-white/10 rounded-2xl backdrop-blur">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-white/10 text-slate-300">
+              <th className="px-4 py-3 text-left">User</th>
+              <th className="px-4 py-3 text-left">ID Type</th>
+              <th className="px-4 py-3 text-left">Front</th>
+              <th className="px-4 py-3 text-left">Back</th>
+              <th className="px-4 py-3 text-left">Status</th>
+              <th className="px-4 py-3 text-left">Submitted</th>
+              <th className="px-4 py-3 text-left">Action</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5">
+            {verifications.map((v) => (
+              <tr key={v.id} className="hover:bg-white/5 text-slate-200">
+                <td className="px-4 py-3">
+                  <div className="flex items-center gap-3">
+                    <img src={v.profilePhoto || '/owner-profile-1.svg'} alt={v.fullName} className="w-9 h-9 rounded-full" />
+                    <div>
+                      <p className="font-semibold">{v.fullName}</p>
+                      <p className="text-xs text-slate-400">@{v.username}</p>
+                    </div>
+                  </div>
+                </td>
+                <td className="px-4 py-3">{v.idType}</td>
+                <td className="px-4 py-3">
+                  <img src={v.frontImage} alt="front" className="w-14 h-10 object-cover rounded border border-white/10" />
+                </td>
+                <td className="px-4 py-3">
+                  <img src={v.backImage} alt="back" className="w-14 h-10 object-cover rounded border border-white/10" />
+                </td>
+                <td className="px-4 py-3">
+                  <span
+                    className={`px-2 py-1 rounded-full text-xs ${
+                      v.status === 'Pending'
+                        ? 'bg-amber-500/15 text-amber-300'
+                        : v.status === 'Approved'
+                        ? 'bg-emerald-500/15 text-emerald-300'
+                        : 'bg-red-500/15 text-red-200'
+                    }`}
+                  >
+                    {v.status}
+                  </span>
+                </td>
+                <td className="px-4 py-3 text-slate-400 text-xs">{format(v.submittedAt, 'MMM d, yyyy')}</td>
+                <td className="px-4 py-3">
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => handleApprove(v.id)}
+                      className="px-3 py-1 rounded-lg bg-emerald-500/15 text-emerald-200 text-xs flex items-center gap-1"
+                    >
+                      <ShieldCheck size={14} /> Approve
+                    </button>
+                    <button
+                      onClick={() => handleReject(v.id)}
+                      className="px-3 py-1 rounded-lg bg-red-500/15 text-red-200 text-xs flex items-center gap-1"
+                    >
+                      <XCircle size={14} /> Reject
+                    </button>
+                  </div>
+                  <input
+                    value={rejectReason}
+                    onChange={(e) => setRejectReason(e.target.value)}
+                    placeholder="Reason (optional)"
+                    className="mt-2 w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-xs text-white"
+                  />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+};
