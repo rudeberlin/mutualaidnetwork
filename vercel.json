@@ -1,14 +1,28 @@
 {
-  "name": "payment-platform",
-  "region": ["sfo"],
-  "public": true,
-  "env": [
-    {
-      "key": "VITE_API_URL",
-      "value": "https://your-api-domain.com"
-    }
-  ],
+  "version": 2,
+  "name": "mutual-aid-network",
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
-  "framework": "vite"
+  "framework": "vite",
+  "installCommand": "npm install",
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/assets/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
+    }
+  ],
+  "env": {
+    "VITE_API_URL": "https://mutualaidnetwork.onrender.com"
+  }
 }

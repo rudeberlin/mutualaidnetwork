@@ -8,6 +8,7 @@
     "dev:server": "node backend/server.js",
     "dev:all": "concurrently \"npm run dev\" \"npm run dev:server\"",
     "build": "tsc -b && vite build",
+    "build:frontend": "tsc -b && vite build",
     "start": "node backend/server.js",
     "lint": "eslint .",
     "preview": "vite preview"
