@@ -178,13 +178,13 @@ export const adminService = {
   },
 
   async suspendUser(userId: string) {
-    // Backend endpoint to be created
-    return userId;
+    const response = await api.post(`/api/admin/suspend-user/${userId}`);
+    return response.data.data;
   },
 
   async reactivateUser(userId: string) {
-    // Backend endpoint to be created
-    return userId;
+    const response = await api.post(`/api/admin/reactivate-user/${userId}`);
+    return response.data.data;
   },
 
   async fetchReports() {

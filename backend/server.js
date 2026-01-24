@@ -721,10 +721,10 @@ app.delete('/api/admin/users/:id', authenticateToken, requireAdmin, async (req, 
 
     // Delete user's related data in order of foreign key dependencies
     // 1. Delete payment matches
-    await client.query('DELETE FROM payment_matches WHERE giver_user_id = $1 OR receiver_user_id = $1', [userId]);
+    await client.query('DELETE FROM payment_matches WHERE giver_id = $1 OR receiver_id = $1', [userId]);
 
     // 2. Delete help activities
-    await client.query('DELETE FROM help_activities WHERE user_id = $1', [userId]);
+    await client.query('DELETE FROM help_activities WHERE giver_id = $1 OR receiver_id = $1', [userId]);
 
     // 3. Delete user packages
     await client.query('DELETE FROM user_packages WHERE user_id = $1', [userId]);
@@ -782,6 +782,40 @@ app.post('/api/admin/verify-user/:userId', authenticateToken, requireAdmin, asyn
       return res.status(404).json({ success: false, error: 'User not found' });
     }
     res.json({ success: true, message: 'User verified successfully' });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Suspend user
+app.post('/api/admin/suspend-user/:userId', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const userId = req.params.userId;
+    const result = await pool.query(
+      'UPDATE users SET is_verified = false, updated_at = CURRENT_TIMESTAMP WHERE id = $1 RETURNING id, full_name, email, is_verified',
+      [userId]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'User not found' });
+    }
+    res.json({ success: true, message: 'User suspended successfully', data: result.rows[0] });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Reactivate user
+app.post('/api/admin/reactivate-user/:userId', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const userId = req.params.userId;
+    const result = await pool.query(
+      'UPDATE users SET is_verified = true, updated_at = CURRENT_TIMESTAMP WHERE id = $1 RETURNING id, full_name, email, is_verified',
+      [userId]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'User not found' });
+    }
+    res.json({ success: true, message: 'User reactivated successfully', data: result.rows[0] });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
