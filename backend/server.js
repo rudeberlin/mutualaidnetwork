@@ -175,7 +175,8 @@ app.post('/api/register', upload.fields([{ name: 'idFront' }, { name: 'idBack' }
     
     // Transform user object to camelCase for frontend
     const newUser = result.rows[0];
-    const userResponse = {\n      id: newUser.id,
+    const userResponse = {
+      id: newUser.id,
       fullName: newUser.full_name,
       username: newUser.username,
       email: newUser.email,
