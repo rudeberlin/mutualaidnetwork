@@ -311,33 +311,39 @@ app.get('/api/user/:id', authenticateToken, async (req, res) => {
     res.json({
       success: true,
       data: result.rows[0],
-    // GET user dashboard stats
-    app.get('/api/user/:id/stats', authenticateToken, async (req, res) => {
-      try {
-        if (req.userId !== req.params.userId && req.userRole !== 'admin') {
-          return res.status(403).json({ success: false, error: 'Unauthorized' });
-        }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
 
-        const userId = req.params.userId;
+// GET user dashboard stats
+app.get('/api/user/:userId/stats', authenticateToken, async (req, res) => {
+  try {
+    if (req.userId !== req.params.userId && req.userRole !== 'admin') {
+      return res.status(403).json({ success: false, error: 'Unauthorized' });
+    }
 
-        // Get user info including registration date
-        const userResult = await pool.query(
-          'SELECT created_at, total_earnings FROM users WHERE id = $1',
-          [userId]
-        );
+    const userId = req.params.userId;
 
-        if (userResult.rows.length === 0) {
-          return res.status(404).json({ success: false, error: 'User not found' });
-        }
+    // Get user info including registration date
+    const userResult = await pool.query(
+      'SELECT created_at, total_earnings FROM users WHERE id = $1',
+      [userId]
+    );
 
-        const user = userResult.rows[0];
-    
-        // Calculate days since registration
-        const registrationDate = new Date(user.created_at);
-        const today = new Date();
-        const daysSinceRegistration = Math.floor((today - registrationDate) / (1000 * 60 * 60 * 24));
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'User not found' });
+    }
 
-        // Count active packages (help activities with 'pending' or 'active' status)
+    const user = userResult.rows[0];
+
+    // Calculate days since registration
+    const registrationDate = new Date(user.created_at);
+    const today = new Date();
+    const daysSinceRegistration = Math.floor((today - registrationDate) / (1000 * 60 * 60 * 24));
+
+    // Count active packages (help activities with 'pending' or 'active' status)
         const activePackagesResult = await pool.query(
           `SELECT COUNT(DISTINCT package_id) as count 
            FROM help_activities 
@@ -378,12 +384,6 @@ app.get('/api/user/:id', authenticateToken, async (req, res) => {
         console.error('Dashboard stats error:', error);
         res.status(500).json({ success: false, error: error.message });
       }
-    });
-
-    });
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
-  }
 });
 
 // GET transactions for user
