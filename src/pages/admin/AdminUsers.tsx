@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useAdminStore } from '../../store/adminStore';
-import { ShieldCheck, Ban, RefreshCw } from 'lucide-react';
+import { ShieldCheck, Ban, RefreshCw, Eye, X } from 'lucide-react';
 import { format } from 'date-fns';
 
 export const AdminUsers: React.FC = () => {
   const { users, suspendUser, reactivateUser } = useAdminStore();
+  const [viewingUser, setViewingUser] = useState<typeof users[0] | null>(null);
 
   return (
     <div className="space-y-4">
@@ -80,7 +81,9 @@ export const AdminUsers: React.FC = () => {
                         <RefreshCw size={14} /> Reactivate
                       </button>
                     )}
-                    <button className="px-3 py-1 rounded-lg bg-white/10 text-white text-xs">View</button>
+                    <button onClick={() => setViewingUser(u)} className="px-3 py-1 rounded-lg bg-white/10 text-white text-xs flex items-center gap-1">
+                      <Eye size={14} /> View
+                    </button>
                   </div>
                 </td>
               </tr>
@@ -88,6 +91,67 @@ export const AdminUsers: React.FC = () => {
           </tbody>
         </table>
       </div>
+
+      {/* User Detail Modal */}
+      {viewingUser && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setViewingUser(null)}>
+          <div className="bg-slate-900 rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="sticky top-0 flex items-center justify-between p-6 border-b border-white/10 bg-slate-900/95 backdrop-blur">
+              <div className="flex items-center gap-4">
+                <img src={viewingUser.profilePhoto || '/owner-profile-1.svg'} alt={viewingUser.fullName} className="w-16 h-16 rounded-full border-2 border-emerald-500/30" />
+                <div>
+                  <h3 className="text-white font-bold text-xl">{viewingUser.fullName}</h3>
+                  <p className="text-slate-400">@{viewingUser.username}</p>
+                </div>
+              </div>
+              <button onClick={() => setViewingUser(null)} className="p-2 hover:bg-white/10 rounded-lg transition-all">
+                <X className="text-slate-400 hover:text-white" size={24} />
+              </button>
+            </div>
+            <div className="p-6 space-y-6">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-slate-400 text-sm">Email</p>
+                  <p className="text-white font-semibold">{viewingUser.email}</p>
+                </div>
+                <div>
+                  <p className="text-slate-400 text-sm">Phone</p>
+                  <p className="text-white font-semibold">{viewingUser.phoneNumber}</p>
+                </div>
+                <div>
+                  <p className="text-slate-400 text-sm">Country</p>
+                  <p className="text-white font-semibold">{viewingUser.country}</p>
+                </div>
+                <div>
+                  <p className="text-slate-400 text-sm">Total Earnings</p>
+                  <p className="text-emerald-400 font-bold">${viewingUser.totalEarnings.toFixed(2)}</p>
+                </div>
+              </div>
+              <div>
+                <p className="text-slate-300 font-semibold mb-3">ID Documents</p>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-slate-400 text-sm mb-2">Front Side</p>
+                    {viewingUser.idDocuments?.frontImage ? (
+                      <img src={viewingUser.idDocuments.frontImage} alt="ID Front" className="w-full rounded-lg border border-white/10" />
+                    ) : (
+                      <div className="w-full h-40 bg-slate-800 rounded-lg flex items-center justify-center text-slate-500">No image</div>
+                    )}
+                  </div>
+                  <div>
+                    <p className="text-slate-400 text-sm mb-2">Back Side</p>
+                    {viewingUser.idDocuments?.backImage ? (
+                      <img src={viewingUser.idDocuments.backImage} alt="ID Back" className="w-full rounded-lg border border-white/10" />
+                    ) : (
+                      <div className="w-full h-40 bg-slate-800 rounded-lg flex items-center justify-center text-slate-500">No image</div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { useAdminStore } from '../../store/adminStore';
-import { ShieldCheck, XCircle } from 'lucide-react';
+import { ShieldCheck, XCircle, ZoomIn, X } from 'lucide-react';
 import { format } from 'date-fns';
 
 export const AdminVerifications: React.FC = () => {
   const { verifications, approveVerification, rejectVerification } = useAdminStore();
   const [rejectReason, setRejectReason] = useState('');
+  const [viewingId, setViewingId] = useState<{ front: string; back: string; name: string } | null>(null);
 
   const handleApprove = (id: string) => approveVerification(id, 'Admin');
   const handleReject = (id: string) => {
@@ -50,10 +51,20 @@ export const AdminVerifications: React.FC = () => {
                 </td>
                 <td className="px-4 py-3">{v.idType}</td>
                 <td className="px-4 py-3">
-                  <img src={v.frontImage} alt="front" className="w-14 h-10 object-cover rounded border border-white/10" />
+                  <div className="relative group cursor-pointer" onClick={() => setViewingId({ front: v.frontImage, back: v.backImage, name: v.fullName })}>
+                    <img src={v.frontImage} alt="front" className="w-14 h-10 object-cover rounded border border-white/10" />
+                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity rounded flex items-center justify-center">
+                      <ZoomIn size={16} className="text-white" />
+                    </div>
+                  </div>
                 </td>
                 <td className="px-4 py-3">
-                  <img src={v.backImage} alt="back" className="w-14 h-10 object-cover rounded border border-white/10" />
+                  <div className="relative group cursor-pointer" onClick={() => setViewingId({ front: v.frontImage, back: v.backImage, name: v.fullName })}>
+                    <img src={v.backImage} alt="back" className="w-14 h-10 object-cover rounded border border-white/10" />
+                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity rounded flex items-center justify-center">
+                      <ZoomIn size={16} className="text-white" />
+                    </div>
+                  </div>
                 </td>
                 <td className="px-4 py-3">
                   <span
@@ -96,6 +107,30 @@ export const AdminVerifications: React.FC = () => {
           </tbody>
         </table>
       </div>
+
+      {/* ID Viewer Modal */}
+      {viewingId && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setViewingId(null)}>
+          <div className="bg-slate-900 rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="sticky top-0 flex items-center justify-between p-4 border-b border-white/10 bg-slate-900/95 backdrop-blur">
+              <h3 className="text-white font-bold">ID Documents - {viewingId.name}</h3>
+              <button onClick={() => setViewingId(null)} className="p-2 hover:bg-white/10 rounded-lg transition-all">
+                <X className="text-slate-400 hover:text-white" size={24} />
+              </button>
+            </div>
+            <div className="p-6 space-y-6">
+              <div>
+                <p className="text-slate-300 font-semibold mb-2">Front Side</p>
+                <img src={viewingId.front} alt="ID Front" className="w-full rounded-lg border border-white/10" />
+              </div>
+              <div>
+                <p className="text-slate-300 font-semibold mb-2">Back Side</p>
+                <img src={viewingId.back} alt="ID Back" className="w-full rounded-lg border border-white/10" />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
