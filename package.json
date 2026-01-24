@@ -11,7 +11,9 @@
     "build:frontend": "tsc -b && vite build",
     "start": "node backend/server.js",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "check-env": "node check-env.js",
+    "deploy": "npm run build && git add . && git commit -m 'Production build' && git push origin master"
   },
   "dependencies": {
     "axios": "^1.6.2",
