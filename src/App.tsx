@@ -29,6 +29,21 @@ const AdminRoute: React.FC<{ children: React.ReactElement }> = ({ children }) =>
   return children;
 };
 
+const UserRoute: React.FC<{ children: React.ReactElement }> = ({ children }) => {
+  const { user, isAuthenticated } = useAuthStore();
+  
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+  
+  // Redirect admins to admin panel
+  if (user?.role === 'admin') {
+    return <Navigate to="/admin" replace />;
+  }
+  
+  return children;
+};
+
 function App() {
   // Auto-logout after 10 minutes of inactivity
   useAutoLogout();
@@ -46,7 +61,14 @@ function App() {
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
 
           {/* Protected Routes */}
-          <Route path="/dashboard" element={<UserDashboard />} />
+          <Route 
+            path="/dashboard" 
+            element={
+              <UserRoute>
+                <UserDashboard />
+              </UserRoute>
+            } 
+          />
           <Route
             path="/admin/*"
             element={
