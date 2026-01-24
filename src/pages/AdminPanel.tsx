@@ -13,23 +13,35 @@ export const AdminPanel: React.FC = () => {
   const [activeView, setActiveView] = useState<AdminView>('dashboard');
   const { isSidebarOpen, closeSidebar } = useUIStore();
   const { loading, error, users, initData } = useAdminStore();
-  const { token, initializeFromStorage } = useAuthStore();
+  const { token, user } = useAuthStore();
   const navigate = useNavigate();
 
   useEffect(() => {
-    initializeFromStorage();
-  }, [initializeFromStorage]);
+    // Check if user is admin
+    if (!user?.id || user?.role !== 'admin') {
+      console.warn('Not authenticated as admin, redirecting...');
+      // Optionally redirect to login
+      // navigate('/login');
+    }
+  }, [user, navigate]);
 
   useEffect(() => {
-    if (token) {
+    // Fetch data immediately when token is available
+    if (token && user?.role === 'admin') {
+      console.log('Admin token available, fetching data...');
       initData();
+      
       // Refresh data every 5 seconds to show new registrations
       const interval = setInterval(() => {
+        console.log('Refreshing admin data...');
         initData();
       }, 5000);
+      
       return () => clearInterval(interval);
+    } else {
+      console.warn('No admin token or not admin role', { token: !!token, role: user?.role });
     }
-  }, [initData, token]);
+  }, [token, user?.role, initData]);
 
   const handleLogout = () => {
     navigate('/');

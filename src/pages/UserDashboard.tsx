@@ -127,6 +127,7 @@ export const UserDashboard: React.FC = () => {
   };
 
   const handleReceiveHelp = () => {
+    if (!offerHelpStatus) return;
     setShowPackageSelection(true);
   };
 
@@ -258,7 +259,13 @@ export const UserDashboard: React.FC = () => {
             </button>
             <button
               onClick={handleReceiveHelp}
-              className="flex items-center gap-2 px-6 py-3 bg-emerald-500 text-white font-semibold rounded-lg hover:bg-emerald-600 transition-all"
+              disabled={!offerHelpStatus}
+              className={`flex items-center gap-2 px-6 py-3 font-semibold rounded-lg transition-all ${
+                !offerHelpStatus 
+                  ? 'bg-slate-500 text-gray-300 cursor-not-allowed opacity-50' 
+                  : 'bg-emerald-500 text-white hover:bg-emerald-600'
+              }`}
+              title={!offerHelpStatus ? 'Offer help first before requesting help' : ''}
             >
               <Hand size={20} />
               Receive Help
@@ -581,16 +588,24 @@ export const UserDashboard: React.FC = () => {
             {/* Active Packages - Interest Accrual Clock */}
             <div className="bg-gradient-to-br from-slate-800/40 to-slate-900/40 border border-slate-700/50 rounded-lg p-6 backdrop-blur-sm">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-white font-bold">Active Packages</h3>
-                <div className="relative w-12 h-12 flex items-center justify-center">
-                  {/* Clock face */}
-                  <div className="absolute inset-0 rounded-full border-2 border-slate-600/50"></div>
-                  {/* Hour hand */}
-                  <div className="absolute w-1 h-3 bg-emerald-400 rounded-full origin-bottom" style={{ transform: 'translateY(-3px) rotate(45deg)' }}></div>
-                  {/* Minute hand */}
-                  <div className="absolute w-0.5 h-4 bg-teal-400 rounded-full origin-bottom" style={{ transform: 'translateY(-4px) rotate(180deg)', animation: 'spin 60s linear infinite' }}></div>
-                  {/* Center dot */}
-                  <div className="absolute w-2 h-2 bg-slate-400 rounded-full"></div>
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-white font-bold">Active Packages</h3>
+                    <span className="px-2 py-0.5 text-[11px] font-semibold rounded-full bg-emerald-500/15 border border-emerald-400/40 text-emerald-200">LIVE</span>
+                  </div>
+                  <p className="text-slate-400 text-xs">Interest accrues in real time</p>
+                </div>
+                <div className="relative w-16 h-16 flex items-center justify-center">
+                  <div className="absolute inset-0 rounded-full border-2 border-emerald-400/30 animate-ping"></div>
+                  <div className="absolute inset-1 rounded-full border border-emerald-400/40"></div>
+                  <div className="relative w-14 h-14 rounded-full bg-slate-900/80 border border-slate-700/60 shadow-inner shadow-emerald-500/10 flex items-center justify-center">
+                    {/* Hour hand */}
+                    <div className="absolute w-1 h-4 bg-emerald-400 rounded-full origin-bottom" style={{ transform: 'translateY(-4px) rotate(45deg)' }}></div>
+                    {/* Minute hand */}
+                    <div className="absolute w-0.5 h-6 bg-teal-400 rounded-full origin-bottom" style={{ transform: 'translateY(-6px) rotate(180deg)', animation: 'spin 60s linear infinite' }}></div>
+                    {/* Center dot */}
+                    <div className="absolute w-2 h-2 bg-slate-200 rounded-full"></div>
+                  </div>
                 </div>
               </div>
               
@@ -598,10 +613,10 @@ export const UserDashboard: React.FC = () => {
                 {dashboardStats.activePackages && dashboardStats.activePackages.length > 0 ? (
                   dashboardStats.activePackages.map((pkg: any, idx: number) => {
                     // Calculate hourly interest accrual (daily % / 24)
-                    const dailyReturn = 0.5; // 50% per day for example
-                    const hourlyReturn = ((dailyReturn / 24) * 100).toFixed(2);
+                    const dailyReturnPercent = 0.5; // 0.5% per day
+                    const hourlyReturnPercent = dailyReturnPercent / 24;
                     const hoursSinceStart = Math.floor((Date.now() - new Date(pkg.created_at).getTime()) / (1000 * 60 * 60));
-                    const accruedPercentage = Math.min((hourlyReturn as any) * hoursSinceStart, dailyReturn * 100);
+                    const accruedPercentage = Math.min(hourlyReturnPercent * hoursSinceStart, dailyReturnPercent);
                     
                     return (
                       <div key={idx} className="bg-slate-700/30 border border-slate-600/30 rounded-lg p-3">
@@ -611,15 +626,15 @@ export const UserDashboard: React.FC = () => {
                             <p className="text-slate-400 text-xs">${pkg.amount}</p>
                           </div>
                           <div className="text-right ml-2">
-                            <p className="text-emerald-400 font-bold text-xs">{hourlyReturn}%/hr</p>
-                            <p className="text-slate-400 text-xs">{accruedPercentage.toFixed(1)}% accrued</p>
+                            <p className="text-emerald-400 font-bold text-xs">{(hourlyReturnPercent * 100).toFixed(2)}%/hr</p>
+                            <p className="text-slate-400 text-xs">{(accruedPercentage * 100).toFixed(2)}% accrued</p>
                           </div>
                         </div>
                         {/* Progress bar */}
                         <div className="w-full h-1.5 bg-slate-700/50 rounded-full overflow-hidden">
                           <div 
                             className="h-full bg-gradient-to-r from-emerald-500 to-teal-500 transition-all"
-                            style={{ width: `${Math.min(accruedPercentage, 100)}%` }}
+                            style={{ width: `${Math.min(accruedPercentage * 100, 100)}%` }}
                           ></div>
                         </div>
                       </div>

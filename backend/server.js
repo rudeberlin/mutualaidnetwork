@@ -24,6 +24,7 @@ const __dirname = path.dirname(__filename);
 const allowedOrigins = [
   process.env.CLIENT_URL,
   'http://localhost:5173',
+  'http://localhost:5174',
   'http://localhost:5000',
   'https://mutualaidnetwork.vercel.app',
   'https://mutualaidnetwork.onrender.com'
@@ -281,8 +282,8 @@ app.post('/api/login', async (req, res) => {
       profilePhoto: user.profile_photo,
       role: user.role,
       idDocuments: {
-        frontImage: user.id_front_image || '',
-        backImage: user.id_back_image || '',
+        frontImage: user.id_front_image ? `${API_URL}${user.id_front_image}` : '',
+        backImage: user.id_back_image ? `${API_URL}${user.id_back_image}` : '',
         uploadedAt: user.created_at,
         verified: user.id_verified
       },

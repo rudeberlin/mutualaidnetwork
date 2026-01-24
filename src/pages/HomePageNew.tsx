@@ -19,36 +19,57 @@ export const HomePageNew: React.FC = () => {
       <section className="relative overflow-hidden pt-32 pb-24 px-4">
         <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/5 via-transparent to-teal-500/5"></div>
         <div className="max-w-6xl mx-auto relative z-10">
-          <div className="text-center mb-12">
-            {/* Badge */}
-            <div className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-500/20 border border-emerald-500/30 rounded-full mb-6">
-              <Sparkles className="w-4 h-4 text-emerald-400" />
-              <span className="text-sm font-semibold text-emerald-300">Trusted by 10,000+ Members Worldwide</span>
+          <div className="grid md:grid-cols-2 gap-10 items-center">
+            <div className="text-center md:text-left">
+              {/* Badge */}
+              <div className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-500/20 border border-emerald-500/30 rounded-full mb-6">
+                <Sparkles className="w-4 h-4 text-emerald-400" />
+                <span className="text-sm font-semibold text-emerald-300">Trusted by 10,000+ Members Worldwide</span>
+              </div>
+
+              {/* Main Headline */}
+              <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold text-white mb-6 leading-tight">
+                Mutual Aid <span className="bg-gradient-to-r from-emerald-400 to-teal-400 bg-clip-text text-transparent">Network</span>
+              </h1>
+              <p className="text-2xl md:text-3xl text-slate-300 mb-4 font-light">Help. Earn. Thrive.</p>
+              <p className="text-lg text-slate-400 mb-8 max-w-3xl md:max-w-xl md:mx-0 mx-auto">
+                Join a vibrant community where mutual aid brings real rewards. Give help, earn returns, and build stronger connections.
+              </p>
+
+              {/* CTA Buttons */}
+              <div className="flex flex-col sm:flex-row gap-4 justify-center md:justify-start items-center md:items-start">
+                <button
+                  onClick={() => navigate('/register')}
+                  className="px-8 py-4 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-bold rounded-lg transition-all duration-200 transform hover:scale-105 shadow-lg shadow-emerald-500/50 flex items-center gap-2"
+                >
+                  Get Started Free <ArrowRight className="w-5 h-5" />
+                </button>
+                <button
+                  onClick={() => navigate('/about')}
+                  className="px-8 py-4 border-2 border-emerald-500/50 text-emerald-300 hover:bg-emerald-500/10 font-bold rounded-lg transition-all duration-200"
+                >
+                  Learn More
+                </button>
+              </div>
             </div>
 
-            {/* Main Headline */}
-            <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold text-white mb-6 leading-tight">
-              Mutual Aid <span className="bg-gradient-to-r from-emerald-400 to-teal-400 bg-clip-text text-transparent">Network</span>
-            </h1>
-            <p className="text-2xl md:text-3xl text-slate-300 mb-4 font-light">Help. Earn. Thrive.</p>
-            <p className="text-lg text-slate-400 mb-8 max-w-3xl mx-auto">
-              Join a vibrant community where mutual aid brings real rewards. Give help, earn returns, and build stronger connections.
-            </p>
-
-            {/* CTA Buttons */}
-            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-              <button
-                onClick={() => navigate('/register')}
-                className="px-8 py-4 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-bold rounded-lg transition-all duration-200 transform hover:scale-105 shadow-lg shadow-emerald-500/50 flex items-center gap-2"
-              >
-                Get Started Free <ArrowRight className="w-5 h-5" />
-              </button>
-              <button
-                onClick={() => navigate('/about')}
-                className="px-8 py-4 border-2 border-emerald-500/50 text-emerald-300 hover:bg-emerald-500/10 font-bold rounded-lg transition-all duration-200"
-              >
-                Learn More
-              </button>
+            {/* Hero Image Placeholder */}
+            <div className="hidden md:block">
+              <div className="relative rounded-2xl overflow-hidden bg-gradient-to-br from-slate-800/80 to-slate-900/80 border border-emerald-500/30 shadow-2xl shadow-emerald-500/10">
+                <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 via-transparent to-teal-500/10"></div>
+                <div className="aspect-video flex flex-col items-center justify-center gap-4 p-8 text-center">
+                  <div className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-500/15 border border-emerald-400/30 rounded-full text-emerald-200 text-sm font-semibold">
+                    📍 Placeholder
+                    <span className="text-emerald-100">Replace with dashboard screenshot</span>
+                  </div>
+                  <div className="w-24 h-24 rounded-full border-2 border-dashed border-emerald-400/60 flex items-center justify-center bg-slate-900/60">
+                    <Heart className="w-10 h-10 text-emerald-300" />
+                  </div>
+                  <p className="text-slate-300 text-sm max-w-sm">
+                    Swap the image at <span className="font-semibold text-emerald-200">/src/assets/dashboard-preview.png</span> to showcase your real dashboard.
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
         </div>

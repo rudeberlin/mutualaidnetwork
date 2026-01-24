@@ -45,6 +45,12 @@ const UserRoute: React.FC<{ children: React.ReactElement }> = ({ children }) => 
 };
 
 function App() {
+  // Initialize auth from localStorage on app mount
+  const { initializeFromStorage } = useAuthStore();
+  React.useEffect(() => {
+    initializeFromStorage();
+  }, [initializeFromStorage]);
+
   // Auto-logout after 10 minutes of inactivity
   useAutoLogout();
 

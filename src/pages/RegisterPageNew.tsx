@@ -1,11 +1,14 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Mail, Lock, UserIcon, Phone, Eye, EyeOff, Upload, Check, AlertCircle } from 'lucide-react';
+import axios from 'axios';
 import { Navbar } from '../components/Navbar';
 import { useAuthStore } from '../store';
 import { validateEmail, validatePassword } from '../utils/helpers';
 import { COUNTRIES } from '../utils/mockData';
 import type { User, RegistrationFormData } from '../types';
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 export const RegisterPageNew: React.FC = () => {
   const [step, setStep] = useState<'account' | 'documents'>('account');
@@ -139,42 +142,33 @@ export const RegisterPageNew: React.FC = () => {
 
     setIsLoading(true);
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      const form = new FormData();
+      form.append('fullName', formData.fullName);
+      form.append('username', formData.username);
+      form.append('email', formData.email);
+      form.append('phoneNumber', formData.phoneNumber);
+      form.append('country', formData.country);
+      form.append('password', formData.password);
+      form.append('confirmPassword', formData.confirmPassword);
+      if (formData.referralCode) form.append('referralCode', formData.referralCode.trim());
+      if (idFrontFile) form.append('idFront', idFrontFile);
+      if (idBackFile) form.append('idBack', idBackFile);
 
-      // Create user object
-      const newUser: User = {
-        id: `user-${Date.now()}`,
-        fullName: formData.fullName,
-        username: formData.username,
-        email: formData.email,
-        phoneNumber: formData.phoneNumber,
-        referralCode: formData.referralCode?.trim() || undefined,
-        country: formData.country,
-        profilePhoto: `https://api.dicebear.com/7.x/avataaars/svg?seed=${formData.username}`,
-        idDocuments: {
-          frontImage: idFrontPreview || '',
-          backImage: idBackPreview || '',
-          uploadedAt: new Date(),
-          verified: false,
-        },
-        isVerified: false,
-        paymentMethodVerified: false,
-        totalEarnings: 0,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
+      const response = await axios.post(`${API_URL}/api/register`, form, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
 
-      // Mock token
-      const mockToken = `token-${Date.now()}`;
-
-      setUser(newUser);
-      setToken(mockToken);
-
-      // Redirect to dashboard
-      navigate('/dashboard');
-    } catch {
-      setErrors({ submit: 'Registration failed. Please try again.' });
+      if (response.data?.success) {
+        const { user, token } = response.data.data;
+        setUser(user as User);
+        setToken(token);
+        navigate('/dashboard');
+      } else {
+        setErrors({ submit: response.data?.error || 'Registration failed. Please try again.' });
+      }
+    } catch (err: any) {
+      const message = err?.response?.data?.error || 'Registration failed. Please try again.';
+      setErrors({ submit: message });
     } finally {
       setIsLoading(false);
     }
