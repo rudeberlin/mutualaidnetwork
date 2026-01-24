@@ -172,11 +172,36 @@ app.post('/api/register', upload.fields([{ name: 'idFront' }, { name: 'idBack' }
     ]);
 
     const token = generateToken(userId);
+    
+    // Transform user object to camelCase for frontend
+    const newUser = result.rows[0];
+    const userResponse = {\n      id: newUser.id,
+      fullName: newUser.full_name,
+      username: newUser.username,
+      email: newUser.email,
+      phoneNumber: newUser.phone_number,
+      country: newUser.country,
+      referralCode: newUser.referral_code,
+      profilePhoto: newUser.profile_photo,
+      role: newUser.role,
+      idDocuments: {
+        frontImage: newUser.id_front_image || '',
+        backImage: newUser.id_back_image || '',
+        uploadedAt: newUser.created_at,
+        verified: newUser.id_verified || false
+      },
+      isVerified: newUser.is_verified,
+      paymentMethodVerified: newUser.payment_method_verified,
+      totalEarnings: parseFloat(newUser.total_earnings || 0),
+      createdAt: newUser.created_at,
+      updatedAt: newUser.updated_at || newUser.created_at
+    };
+    
     res.status(201).json({
       success: true,
       message: 'User registered successfully',
       data: {
-        user: result.rows[0],
+        user: userResponse,
         token,
       },
     });
@@ -210,13 +235,34 @@ app.post('/api/login', async (req, res) => {
 
     const token = generateToken(user.id);
     
-    // Remove password_hash from response
-    const { password_hash, ...userWithoutPassword } = user;
+    // Transform user object to camelCase for frontend
+    const userResponse = {
+      id: user.id,
+      fullName: user.full_name,
+      username: user.username,
+      email: user.email,
+      phoneNumber: user.phone_number,
+      country: user.country,
+      referralCode: user.referral_code,
+      profilePhoto: user.profile_photo,
+      role: user.role,
+      idDocuments: {
+        frontImage: user.id_front_image || '',
+        backImage: user.id_back_image || '',
+        uploadedAt: user.created_at,
+        verified: user.id_verified
+      },
+      isVerified: user.is_verified,
+      paymentMethodVerified: user.payment_method_verified,
+      totalEarnings: parseFloat(user.total_earnings || 0),
+      createdAt: user.created_at,
+      updatedAt: user.updated_at
+    };
     
     res.json({
       success: true,
       data: {
-        user: userWithoutPassword,
+        user: userResponse,
         token,
       },
     });

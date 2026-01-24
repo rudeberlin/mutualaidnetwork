@@ -36,9 +36,16 @@ export const LoginPage: React.FC = () => {
       });
 
       if (response.data.success) {
-        setUser(response.data.data.user);
+        const user = response.data.data.user;
+        setUser(user);
         setToken(response.data.data.token);
-        navigate('/dashboard');
+        
+        // Redirect admin users to admin panel
+        if (user.role === 'admin') {
+          navigate('/admin');
+        } else {
+          navigate('/dashboard');
+        }
       }
     } catch (err: any) {
       setError(err.response?.data?.error || 'Login failed. Please try again.');
