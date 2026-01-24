@@ -7,6 +7,7 @@ import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
+import { v4 as uuidv4 } from 'uuid';
 import pool, { initializeDatabase } from './database.js';
 
 // Load environment variables
@@ -563,11 +564,12 @@ app.post('/api/help/register-offer', authenticateToken, async (req, res) => {
     }
 
     // Create help activity as giver
+    const activityId = uuidv4();
     const result = await pool.query(`
-      INSERT INTO help_activities (giver_id, package_id, amount, status, created_at)
-      VALUES ($1, $2, $3, 'pending', CURRENT_TIMESTAMP)
+      INSERT INTO help_activities (id, giver_id, package_id, amount, status, created_at)
+      VALUES ($1, $2, $3, $4, 'pending', CURRENT_TIMESTAMP)
       RETURNING id, giver_id, package_id, amount, status, created_at
-    `, [userId, packageId, pkg.amount]);
+    `, [activityId, userId, packageId, pkg.amount]);
 
     res.status(201).json({
       success: true,
@@ -619,11 +621,12 @@ app.post('/api/help/register-receive', authenticateToken, async (req, res) => {
     }
 
     // Create help activity as receiver
+    const activityId = uuidv4();
     const result = await pool.query(`
-      INSERT INTO help_activities (receiver_id, package_id, amount, status, created_at)
-      VALUES ($1, $2, $3, 'pending', CURRENT_TIMESTAMP)
+      INSERT INTO help_activities (id, receiver_id, package_id, amount, status, created_at)
+      VALUES ($1, $2, $3, $4, 'pending', CURRENT_TIMESTAMP)
       RETURNING id, receiver_id, package_id, amount, status, created_at
-    `, [userId, packageId, pkg.amount]);
+    `, [activityId, userId, packageId, pkg.amount]);
 
     res.status(201).json({
       success: true,
@@ -646,11 +649,12 @@ app.post('/api/help/request', authenticateToken, async (req, res) => {
     }
     const pkg = pkgResult.rows[0];
 
+    const activityId = uuidv4();
     const result = await pool.query(`
-      INSERT INTO help_activities (giver_id, receiver_id, package_id, amount, payment_method, status)
-      VALUES ($1, $2, $3, $4, $5, 'active')
+      INSERT INTO help_activities (id, giver_id, receiver_id, package_id, amount, payment_method, status)
+      VALUES ($1, $2, $3, $4, $5, $6, 'active')
       RETURNING *
-    `, [giverId, receiverId, packageId, pkg.amount, paymentMethod]);
+    `, [activityId, giverId, receiverId, packageId, pkg.amount, paymentMethod]);
 
     res.status(201).json({
       success: true,
@@ -1101,7 +1105,6 @@ app.get('/api/admin/available-givers', authenticateToken, requireAdmin, async (r
       JOIN help_activities ha ON u.id = ha.giver_id
       WHERE ha.status = 'pending' AND ha.giver_id IS NOT NULL AND ha.receiver_id IS NULL
       AND u.role = 'member'
-      AND u.is_verified = true
       ORDER BY u.id, ha.created_at ASC
     `);
     res.json({ success: true, data: result.rows });
