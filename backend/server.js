@@ -572,6 +572,351 @@ app.put('/api/admin/packages/:id', authenticateToken, requireAdmin, async (req, 
   }
 });
 
+// ====== USER PACKAGE MANAGEMENT ======
+// Get all user packages
+app.get('/api/admin/user-packages', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT up.*, u.full_name, u.email, p.name as package_name, p.amount, p.return_percentage
+      FROM user_packages up
+      JOIN users u ON up.user_id = u.id
+      JOIN packages p ON up.package_id = p.id
+      ORDER BY up.created_at DESC
+    `);
+    res.json({ success: true, data: result.rows });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Approve user package
+app.post('/api/admin/user-packages/:id/approve', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { maturityDate } = req.body;
+    const result = await pool.query(`
+      UPDATE user_packages 
+      SET admin_approved = true, status = 'active', maturity_date = $1, updated_at = CURRENT_TIMESTAMP
+      WHERE id = $2
+      RETURNING *
+    `, [maturityDate, req.params.id]);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Package not found' });
+    }
+    res.json({ success: true, data: result.rows[0] });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Reject user package
+app.post('/api/admin/user-packages/:id/reject', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const result = await pool.query(`
+      UPDATE user_packages 
+      SET status = 'rejected', updated_at = CURRENT_TIMESTAMP
+      WHERE id = $2
+      RETURNING *
+    `, [req.params.id]);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Package not found' });
+    }
+    res.json({ success: true, data: result.rows[0] });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Extend maturity date
+app.post('/api/admin/user-packages/:id/extend', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { newMaturityDate } = req.body;
+    const result = await pool.query(`
+      UPDATE user_packages 
+      SET maturity_date = $1, extended_count = extended_count + 1, updated_at = CURRENT_TIMESTAMP
+      WHERE id = $2
+      RETURNING *
+    `, [newMaturityDate, req.params.id]);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Package not found' });
+    }
+    res.json({ success: true, data: result.rows[0] });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Reset user package
+app.post('/api/admin/user-packages/:id/reset', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const result = await pool.query(`
+      UPDATE user_packages 
+      SET status = 'pending', admin_approved = false, maturity_date = NULL, extended_count = 0, updated_at = CURRENT_TIMESTAMP
+      WHERE id = $1
+      RETURNING *
+    `, [req.params.id]);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Package not found' });
+    }
+    res.json({ success: true, data: result.rows[0] });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ====== PAYMENT MATCHING SYSTEM ======
+// Get users pending to receive help
+app.get('/api/admin/pending-receivers', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT ha.id as activity_id, u.id, u.full_name, u.email, u.phone_number, 
+             p.name as package_name, ha.amount, ha.created_at
+      FROM help_activities ha
+      JOIN users u ON ha.giver_id = u.id
+      JOIN packages p ON ha.package_id = p.id
+      WHERE ha.status = 'pending' AND ha.receiver_id IS NULL
+      ORDER BY ha.created_at ASC
+    `);
+    res.json({ success: true, data: result.rows });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Get users available to give help
+app.get('/api/admin/available-givers', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT u.id, u.full_name, u.email, u.phone_number, u.total_earnings
+      FROM users u
+      WHERE u.id NOT IN (
+        SELECT giver_id FROM help_activities WHERE status IN ('pending', 'active')
+      )
+      AND u.role = 'member'
+      AND u.is_verified = true
+      ORDER BY u.created_at ASC
+    `);
+    res.json({ success: true, data: result.rows });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Create payment match
+app.post('/api/admin/create-match', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { giverId, receiverId, helpActivityId, amount } = req.body;
+    
+    // Set payment deadline to 6 hours from now
+    const paymentDeadline = new Date();
+    paymentDeadline.setHours(paymentDeadline.getHours() + 6);
+    
+    // Create match record
+    const matchResult = await pool.query(`
+      INSERT INTO payment_matches (giver_id, receiver_id, help_activity_id, amount, payment_deadline, matched_by, status)
+      VALUES ($1, $2, $3, $4, $5, $6, 'pending')
+      RETURNING *
+    `, [giverId, receiverId, helpActivityId, amount, paymentDeadline, req.userId]);
+    
+    // Update help activity
+    await pool.query(`
+      UPDATE help_activities 
+      SET receiver_id = $1, status = 'matched', matched_at = CURRENT_TIMESTAMP, payment_deadline = $2
+      WHERE id = $3
+    `, [receiverId, paymentDeadline, helpActivityId]);
+    
+    res.json({ success: true, data: matchResult.rows[0] });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Get payment matches
+app.get('/api/admin/payment-matches', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT pm.*, 
+             g.full_name as giver_name, g.email as giver_email, g.phone_number as giver_phone,
+             r.full_name as receiver_name, r.email as receiver_email, r.phone_number as receiver_phone,
+             ha.amount
+      FROM payment_matches pm
+      JOIN users g ON pm.giver_id = g.id
+      JOIN users r ON pm.receiver_id = r.id
+      JOIN help_activities ha ON pm.help_activity_id = ha.id
+      ORDER BY pm.created_at DESC
+    `);
+    res.json({ success: true, data: result.rows });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Confirm payment completion
+app.post('/api/admin/payment-matches/:id/confirm', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const result = await pool.query(`
+      UPDATE payment_matches 
+      SET status = 'completed', completed_at = CURRENT_TIMESTAMP
+      WHERE id = $1
+      RETURNING *
+    `, [req.params.id]);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Match not found' });
+    }
+    
+    // Update help activity status
+    await pool.query(`
+      UPDATE help_activities 
+      SET status = 'completed'
+      WHERE id = $1
+    `, [result.rows[0].help_activity_id]);
+    
+    res.json({ success: true, data: result.rows[0] });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Ban user for payment default
+app.post('/api/admin/ban-user', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { userId, reason } = req.body;
+    
+    const result = await pool.query(`
+      INSERT INTO banned_accounts (user_id, reason, banned_by)
+      VALUES ($1, $2, $3)
+      RETURNING *
+    `, [userId, reason, req.userId]);
+    
+    // Update user status
+    await pool.query(`
+      UPDATE users SET is_verified = false WHERE id = $1
+    `, [userId]);
+    
+    res.json({ success: true, data: result.rows[0] });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Get banned accounts
+app.get('/api/admin/banned-accounts', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT ba.*, u.full_name, u.email, u.phone_number
+      FROM banned_accounts ba
+      JOIN users u ON ba.user_id = u.id
+      WHERE ba.is_active = true
+      ORDER BY ba.banned_at DESC
+    `);
+    res.json({ success: true, data: result.rows });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Unban user
+app.post('/api/admin/unban-user/:id', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const result = await pool.query(`
+      UPDATE banned_accounts 
+      SET is_active = false, unbanned_at = CURRENT_TIMESTAMP
+      WHERE id = $1
+      RETURNING *
+    `, [req.params.id]);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Ban record not found' });
+    }
+    
+    // Reactivate user
+    await pool.query(`
+      UPDATE users SET is_verified = true WHERE id = $1
+    `, [result.rows[0].user_id]);
+    
+    res.json({ success: true, data: result.rows[0] });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ====== USER ENDPOINTS FOR MATCHING ======
+// Get user's matched payment details
+app.get('/api/user/:userId/payment-match', authenticateToken, async (req, res) => {
+  try {
+    if (req.userId !== req.params.userId && req.userRole !== 'admin') {
+      return res.status(403).json({ success: false, error: 'Unauthorized' });
+    }
+    
+    // Check if user is a giver
+    const giverMatch = await pool.query(`
+      SELECT pm.*, u.full_name, u.phone_number, u.email, pm.payment_deadline
+      FROM payment_matches pm
+      JOIN users u ON pm.receiver_id = u.id
+      WHERE pm.giver_id = $1 AND pm.status = 'pending'
+      ORDER BY pm.created_at DESC
+      LIMIT 1
+    `, [req.params.userId]);
+    
+    if (giverMatch.rows.length > 0) {
+      return res.json({ 
+        success: true, 
+        role: 'giver',
+        data: giverMatch.rows[0] 
+      });
+    }
+    
+    // Check if user is a receiver
+    const receiverMatch = await pool.query(`
+      SELECT pm.*, u.full_name, u.phone_number, u.email, pm.payment_deadline
+      FROM payment_matches pm
+      JOIN users u ON pm.giver_id = u.id
+      WHERE pm.receiver_id = $1 AND pm.status = 'pending'
+      ORDER BY pm.created_at DESC
+      LIMIT 1
+    `, [req.params.userId]);
+    
+    if (receiverMatch.rows.length > 0) {
+      return res.json({ 
+        success: true, 
+        role: 'receiver',
+        data: receiverMatch.rows[0] 
+      });
+    }
+    
+    res.json({ success: true, data: null });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// User confirms payment sent
+app.post('/api/user/confirm-payment-sent', authenticateToken, async (req, res) => {
+  try {
+    const { matchId } = req.body;
+    
+    // Mark as awaiting admin confirmation
+    const result = await pool.query(`
+      UPDATE payment_matches 
+      SET status = 'awaiting_confirmation'
+      WHERE id = $1 AND giver_id = $2
+      RETURNING *
+    `, [matchId, req.userId]);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Match not found' });
+    }
+    
+    res.json({ success: true, data: result.rows[0] });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // Serve static files ONLY in monolithic deployment
 // Comment this out if deploying frontend separately (e.g., Vercel)
 if (process.env.SERVE_FRONTEND === 'true' && process.env.NODE_ENV === 'production') {

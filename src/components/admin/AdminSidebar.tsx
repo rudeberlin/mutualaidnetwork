@@ -1,16 +1,19 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { BarChart3, Users, ShieldCheck, HelpingHand, CreditCard, Receipt, Package, PieChart, Settings } from 'lucide-react';
+import { BarChart3, Users, ShieldCheck, HelpingHand, CreditCard, Receipt, Package, PieChart, Settings, PackageCheck, Link2, Ban } from 'lucide-react';
 import { useUIStore } from '../../store';
 
 const navItems = [
   { to: '/admin', label: 'Dashboard', icon: BarChart3, end: true },
   { to: '/admin/users', label: 'Users', icon: Users },
   { to: '/admin/verifications', label: 'Verifications', icon: ShieldCheck },
+  { to: '/admin/user-packages', label: 'User Packages', icon: PackageCheck },
+  { to: '/admin/payment-matching', label: 'Payment Matching', icon: Link2 },
   { to: '/admin/help-activities', label: 'Help Activities', icon: HelpingHand },
   { to: '/admin/payments', label: 'Payments', icon: CreditCard },
   { to: '/admin/transactions', label: 'Transactions', icon: Receipt },
   { to: '/admin/packages', label: 'Packages', icon: Package },
+  { to: '/admin/banned-accounts', label: 'Banned Accounts', icon: Ban },
   { to: '/admin/reports', label: 'Reports', icon: PieChart },
   { to: '/admin/settings', label: 'Settings', icon: Settings },
 ];

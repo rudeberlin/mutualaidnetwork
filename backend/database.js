@@ -103,8 +103,56 @@ export async function initializeDatabase() {
         amount DECIMAL(10, 2) NOT NULL,
         payment_method VARCHAR(50),
         status VARCHAR(50) NOT NULL,
+        admin_approved BOOLEAN DEFAULT FALSE,
+        maturity_date TIMESTAMP,
+        payment_deadline TIMESTAMP,
+        matched_at TIMESTAMP,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // Create user_packages table for tracking user subscriptions
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS user_packages (
+        id SERIAL PRIMARY KEY,
+        user_id VARCHAR(255) REFERENCES users(id) ON DELETE CASCADE,
+        package_id VARCHAR(255) REFERENCES packages(id),
+        status VARCHAR(50) DEFAULT 'pending',
+        admin_approved BOOLEAN DEFAULT FALSE,
+        maturity_date TIMESTAMP,
+        extended_count INTEGER DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // Create payment_matches table for tracking admin matches
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS payment_matches (
+        id SERIAL PRIMARY KEY,
+        giver_id VARCHAR(255) REFERENCES users(id),
+        receiver_id VARCHAR(255) REFERENCES users(id),
+        help_activity_id VARCHAR(255) REFERENCES help_activities(id),
+        amount DECIMAL(10, 2) NOT NULL,
+        payment_deadline TIMESTAMP NOT NULL,
+        status VARCHAR(50) DEFAULT 'pending',
+        matched_by VARCHAR(255),
+        completed_at TIMESTAMP,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // Create banned_accounts table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS banned_accounts (
+        id SERIAL PRIMARY KEY,
+        user_id VARCHAR(255) REFERENCES users(id),
+        reason TEXT NOT NULL,
+        banned_by VARCHAR(255),
+        banned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        unbanned_at TIMESTAMP,
+        is_active BOOLEAN DEFAULT TRUE
       )
     `);
 

@@ -1,6 +1,7 @@
 // Main Components
 export { Navbar, Footer, LoadingSpinner, SuccessMessage, ErrorMessage } from './Navbar';
 export { PlanCard } from './PlanCard';
+export { PaymentMatchCard } from './PaymentMatchCard';
 
 // Verification Components
 export { VerificationStatusCard } from './VerificationStatusCard';

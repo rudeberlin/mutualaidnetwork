@@ -4,6 +4,7 @@ import { Navbar } from '../components/Navbar';
 import { SettingsModal } from '../components/SettingsModal';
 import { PaymentMethodModal } from '../components/PaymentMethodModal';
 import { Testimonials } from '../components/Testimonials';
+import { PaymentMatchCard } from '../components/PaymentMatchCard';
 import { PACKAGES, MOCK_CURRENT_USER, MOCK_TRANSACTIONS } from '../utils/mockData';
 import { useAuthStore } from '../store';
 import type { Package } from '../types';
@@ -339,6 +340,9 @@ export const UserDashboard: React.FC = () => {
             </p>
           </div>
         </div>
+
+        {/* Payment Match Card - Shows when user is matched for payment */}
+        <PaymentMatchCard />
 
         {/* Active Help Requests - Persistent Status Display */}
         <div className="grid md:grid-cols-2 gap-6 mb-12">
