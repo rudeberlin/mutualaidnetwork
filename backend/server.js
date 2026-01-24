@@ -157,10 +157,16 @@ app.post('/api/register', upload.fields([{ name: 'idFront' }, { name: 'idBack' }
       return res.status(400).json({ success: false, error: 'Passwords do not match' });
     }
 
-    // Check if user exists
+    // Check if user exists (email/username)
     const existingUser = await pool.query('SELECT id FROM users WHERE email = $1 OR username = $2', [email, username]);
     if (existingUser.rows.length > 0) {
       return res.status(400).json({ success: false, error: 'Email or username already registered' });
+    }
+
+    // Check if phone already registered
+    const existingPhone = await pool.query('SELECT id FROM users WHERE phone_number = $1', [phoneNumber]);
+    if (existingPhone.rows.length > 0) {
+      return res.status(400).json({ success: false, error: 'Phone number already registered' });
     }
 
     // Hash password
@@ -469,7 +475,12 @@ app.post('/api/upload', upload.single('file'), (req, res) => {
 // Admin routes
 app.get('/api/admin/users', authenticateToken, requireAdmin, async (req, res) => {
   try {
-    const result = await pool.query('SELECT id, full_name, username, email, phone_number, country, role, is_verified, payment_method_verified, total_earnings, created_at FROM users ORDER BY created_at DESC');
+    const result = await pool.query(`
+      SELECT id, full_name, username, email, phone_number, country, role, 
+             is_verified, id_verified, payment_method_verified, total_earnings, 
+             id_front_image, id_back_image, created_at, updated_at
+      FROM users 
+      ORDER BY created_at DESC`);
     res.json({ success: true, data: result.rows });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });

@@ -28,7 +28,27 @@ api.interceptors.request.use((config) => {
 export const adminService = {
   async fetchUsers(): Promise<User[]> {
     const response = await api.get('/api/admin/users');
-    return response.data.data || [];
+    const users = response.data.data || [];
+    return users.map((u: any) => ({
+      id: u.id,
+      fullName: u.full_name,
+      username: u.username,
+      email: u.email,
+      phoneNumber: u.phone_number,
+      country: u.country,
+      role: u.role,
+      isVerified: u.is_verified,
+      paymentMethodVerified: u.payment_method_verified,
+      totalEarnings: parseFloat(u.total_earnings || 0),
+      createdAt: new Date(u.created_at),
+      updatedAt: new Date(u.updated_at || u.created_at),
+      idDocuments: {
+        frontImage: u.id_front_image?.startsWith('/') ? `${API_URL}${u.id_front_image}` : u.id_front_image || '',
+        backImage: u.id_back_image?.startsWith('/') ? `${API_URL}${u.id_back_image}` : u.id_back_image || '',
+        uploadedAt: u.created_at ? new Date(u.created_at) : new Date(),
+        verified: u.id_verified || false,
+      },
+    }));
   },
 
   async fetchVerifications(): Promise<AdminVerification[]> {
