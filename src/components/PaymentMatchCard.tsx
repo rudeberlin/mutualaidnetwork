@@ -13,6 +13,7 @@ interface PaymentMatch {
   matched_user: {
     full_name: string;
     phone_number: string;
+    account_name?: string;
     account_number?: string;
     bank_name?: string;
   };
@@ -41,7 +42,24 @@ export const PaymentMatchCard: React.FC = () => {
           headers: { Authorization: `Bearer ${token}` }
         }
       );
-      setMatch(response.data.data);
+      const payload = response.data.data;
+
+      if (!payload) {
+        setMatch(null);
+        return;
+      }
+
+      const normalized: PaymentMatch = {
+        role: payload.role,
+        id: payload.match.id,
+        amount: Number(payload.match.amount),
+        payment_deadline: payload.match.payment_deadline,
+        status: payload.match.status,
+        matched_user: payload.match.matched_user,
+        created_at: payload.match.created_at
+      };
+
+      setMatch(normalized);
     } catch (error: any) {
       if (error.response?.status !== 404) {
         console.error('Error fetching payment match:', error);
@@ -168,13 +186,20 @@ export const PaymentMatchCard: React.FC = () => {
             </div>
           </div>
 
-          {match.matched_user.account_number && (
+          {(match.matched_user.account_number || match.matched_user.account_name) && (
             <div className="flex items-center gap-3 p-3 bg-slate-800/50 rounded-lg">
               <CreditCard size={20} className="text-emerald-400" />
               <div>
                 <p className="text-xs text-slate-400">Bank Details</p>
-                <p className="text-white font-semibold">{match.matched_user.account_number}</p>
-                <p className="text-sm text-slate-400">{match.matched_user.bank_name}</p>
+                {match.matched_user.account_name && (
+                  <p className="text-white font-semibold">{match.matched_user.account_name}</p>
+                )}
+                {match.matched_user.account_number && (
+                  <p className="text-white">{match.matched_user.account_number}</p>
+                )}
+                {match.matched_user.bank_name && (
+                  <p className="text-sm text-slate-400">{match.matched_user.bank_name}</p>
+                )}
               </div>
             </div>
           )}
@@ -219,6 +244,24 @@ export const PaymentMatchCard: React.FC = () => {
               <p className="text-white font-semibold">{match.matched_user.phone_number}</p>
             </div>
           </div>
+
+          {(match.matched_user.account_number || match.matched_user.account_name) && (
+            <div className="flex items-center gap-3 p-3 bg-slate-800/50 rounded-lg">
+              <CreditCard size={20} className="text-blue-400" />
+              <div>
+                <p className="text-xs text-slate-400">Giver Bank Details</p>
+                {match.matched_user.account_name && (
+                  <p className="text-white font-semibold">{match.matched_user.account_name}</p>
+                )}
+                {match.matched_user.account_number && (
+                  <p className="text-white">{match.matched_user.account_number}</p>
+                )}
+                {match.matched_user.bank_name && (
+                  <p className="text-sm text-slate-400">{match.matched_user.bank_name}</p>
+                )}
+              </div>
+            </div>
+          )}
 
           <div className="p-4 bg-blue-500/10 border border-blue-500/30 rounded-lg">
             <p className="text-blue-400 text-sm">

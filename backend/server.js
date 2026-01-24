@@ -539,6 +539,110 @@ app.get('/api/admin/payments', authenticateToken, requireAdmin, async (req, res)
   }
 });
 
+// ====== PAYMENT ACCOUNT MANAGEMENT ======
+// Get all user payment accounts (giver + receiver views)
+app.get('/api/admin/payment-accounts', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const search = req.query.search ? `%${req.query.search.toLowerCase()}%` : null;
+    const params = [];
+    let whereClause = '';
+
+    if (search) {
+      whereClause = 'WHERE LOWER(u.full_name) LIKE $1 OR LOWER(u.email) LIKE $1';
+      params.push(search);
+    }
+
+    const result = await pool.query(
+      `SELECT u.id,
+              u.full_name,
+              u.email,
+              u.phone_number,
+              recv.account_name  AS receive_account_name,
+              recv.account_number AS receive_account_number,
+              recv.bank_name     AS receive_bank_name,
+              COALESCE(recv.phone_number, u.phone_number) AS receive_phone_number,
+              give.account_name  AS give_account_name,
+              give.account_number AS give_account_number,
+              give.bank_name     AS give_bank_name,
+              COALESCE(give.phone_number, u.phone_number) AS give_phone_number
+       FROM users u
+       LEFT JOIN user_payment_accounts recv ON recv.user_id = u.id AND recv.mode = 'receive'
+       LEFT JOIN user_payment_accounts give ON give.user_id = u.id AND give.mode = 'give'
+       ${whereClause}
+       ORDER BY u.full_name ASC`,
+      params
+    );
+
+    res.json({ success: true, data: result.rows });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Get a single user's payment accounts (both give/receive)
+app.get('/api/admin/users/:userId/payment-accounts', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT u.id,
+              u.full_name,
+              u.email,
+              u.phone_number,
+              recv.account_name  AS receive_account_name,
+              recv.account_number AS receive_account_number,
+              recv.bank_name     AS receive_bank_name,
+              COALESCE(recv.phone_number, u.phone_number) AS receive_phone_number,
+              give.account_name  AS give_account_name,
+              give.account_number AS give_account_number,
+              give.bank_name     AS give_bank_name,
+              COALESCE(give.phone_number, u.phone_number) AS give_phone_number
+       FROM users u
+       LEFT JOIN user_payment_accounts recv ON recv.user_id = u.id AND recv.mode = 'receive'
+       LEFT JOIN user_payment_accounts give ON give.user_id = u.id AND give.mode = 'give'
+       WHERE u.id = $1`,
+      [req.params.userId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'User not found' });
+    }
+
+    res.json({ success: true, data: result.rows[0] });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Upsert payment account for a specific role
+app.post('/api/admin/payment-accounts', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { userId, mode, accountName, accountNumber, bankName, phoneNumber } = req.body;
+
+    if (!userId || !mode || !accountName || !accountNumber || !bankName) {
+      return res.status(400).json({ success: false, error: 'Missing required fields' });
+    }
+
+    const normalizedMode = mode === 'receive' ? 'receive' : 'give';
+
+    const result = await pool.query(
+      `INSERT INTO user_payment_accounts (user_id, mode, account_name, account_number, bank_name, phone_number, updated_by, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, CURRENT_TIMESTAMP)
+       ON CONFLICT (user_id, mode) DO UPDATE
+       SET account_name = EXCLUDED.account_name,
+           account_number = EXCLUDED.account_number,
+           bank_name = EXCLUDED.bank_name,
+           phone_number = EXCLUDED.phone_number,
+           updated_by = EXCLUDED.updated_by,
+           updated_at = CURRENT_TIMESTAMP
+       RETURNING *`,
+      [userId, normalizedMode, accountName, accountNumber, bankName, phoneNumber || null, req.userId]
+    );
+
+    res.json({ success: true, data: result.rows[0] });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 app.get('/api/admin/help-activities', authenticateToken, requireAdmin, async (req, res) => {
   try {
     const result = await pool.query('SELECT * FROM help_activities ORDER BY created_at DESC');
@@ -851,43 +955,76 @@ app.get('/api/user/:userId/payment-match', authenticateToken, async (req, res) =
     if (req.userId !== req.params.userId && req.userRole !== 'admin') {
       return res.status(403).json({ success: false, error: 'Unauthorized' });
     }
-    
-    // Check if user is a giver
-    const giverMatch = await pool.query(`
-      SELECT pm.*, u.full_name, u.phone_number, u.email, pm.payment_deadline
-      FROM payment_matches pm
-      JOIN users u ON pm.receiver_id = u.id
-      WHERE pm.giver_id = $1 AND pm.status = 'pending'
-      ORDER BY pm.created_at DESC
-      LIMIT 1
-    `, [req.params.userId]);
-    
+
+    const buildMatchPayload = (row) => ({
+      id: row.id,
+      amount: row.amount,
+      payment_deadline: row.payment_deadline,
+      status: row.status,
+      created_at: row.created_at,
+      matched_user: {
+        full_name: row.counterparty_name,
+        phone_number: row.counterparty_phone,
+        account_name: row.account_name,
+        account_number: row.account_number,
+        bank_name: row.bank_name
+      }
+    });
+
+    // Check if user is a giver (needs receiver's payout info)
+    const giverMatch = await pool.query(
+      `SELECT pm.*, 
+              r.full_name AS counterparty_name,
+              COALESCE(recv.phone_number, r.phone_number) AS counterparty_phone,
+              recv.account_name,
+              recv.account_number,
+              recv.bank_name
+       FROM payment_matches pm
+       JOIN users r ON pm.receiver_id = r.id
+       LEFT JOIN user_payment_accounts recv ON recv.user_id = r.id AND recv.mode = 'receive'
+       WHERE pm.giver_id = $1 AND pm.status IN ('pending', 'awaiting_confirmation')
+       ORDER BY pm.created_at DESC
+       LIMIT 1`,
+      [req.params.userId]
+    );
+
     if (giverMatch.rows.length > 0) {
-      return res.json({ 
-        success: true, 
-        role: 'giver',
-        data: giverMatch.rows[0] 
+      return res.json({
+        success: true,
+        data: {
+          role: 'giver',
+          match: buildMatchPayload(giverMatch.rows[0])
+        }
       });
     }
-    
-    // Check if user is a receiver
-    const receiverMatch = await pool.query(`
-      SELECT pm.*, u.full_name, u.phone_number, u.email, pm.payment_deadline
-      FROM payment_matches pm
-      JOIN users u ON pm.giver_id = u.id
-      WHERE pm.receiver_id = $1 AND pm.status = 'pending'
-      ORDER BY pm.created_at DESC
-      LIMIT 1
-    `, [req.params.userId]);
-    
+
+    // Check if user is a receiver (should only see giver info)
+    const receiverMatch = await pool.query(
+      `SELECT pm.*, 
+              g.full_name AS counterparty_name,
+              COALESCE(give.phone_number, g.phone_number) AS counterparty_phone,
+              give.account_name,
+              give.account_number,
+              give.bank_name
+       FROM payment_matches pm
+       JOIN users g ON pm.giver_id = g.id
+       LEFT JOIN user_payment_accounts give ON give.user_id = g.id AND give.mode = 'give'
+       WHERE pm.receiver_id = $1 AND pm.status IN ('pending', 'awaiting_confirmation')
+       ORDER BY pm.created_at DESC
+       LIMIT 1`,
+      [req.params.userId]
+    );
+
     if (receiverMatch.rows.length > 0) {
-      return res.json({ 
-        success: true, 
-        role: 'receiver',
-        data: receiverMatch.rows[0] 
+      return res.json({
+        success: true,
+        data: {
+          role: 'receiver',
+          match: buildMatchPayload(receiverMatch.rows[0])
+        }
       });
     }
-    
+
     res.json({ success: true, data: null });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });

@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { BarChart3, Users, ShieldCheck, HelpingHand, CreditCard, Receipt, Package, PieChart, Settings, PackageCheck, Link2, Ban } from 'lucide-react';
+import { BarChart3, Users, ShieldCheck, HelpingHand, CreditCard, Receipt, Package, PieChart, Settings, PackageCheck, Link2, Ban, Banknote } from 'lucide-react';
 import { useUIStore } from '../../store';
 
 const navItems = [
@@ -9,6 +9,7 @@ const navItems = [
   { to: '/admin/verifications', label: 'Verifications', icon: ShieldCheck },
   { to: '/admin/user-packages', label: 'User Packages', icon: PackageCheck },
   { to: '/admin/payment-matching', label: 'Payment Matching', icon: Link2 },
+  { to: '/admin/payment-accounts', label: 'Payment Accounts', icon: Banknote },
   { to: '/admin/help-activities', label: 'Help Activities', icon: HelpingHand },
   { to: '/admin/payments', label: 'Payments', icon: CreditCard },
   { to: '/admin/transactions', label: 'Transactions', icon: Receipt },

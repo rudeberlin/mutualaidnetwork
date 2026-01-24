@@ -18,6 +18,7 @@ import { AdminPackages } from './pages/admin/AdminPackages';
 import { AdminUserPackages } from './pages/admin/AdminUserPackages';
 import { AdminPaymentMatching } from './pages/admin/AdminPaymentMatching';
 import { AdminBannedAccounts } from './pages/admin/AdminBannedAccounts';
+import { AdminPaymentAccounts } from './pages/admin/AdminPaymentAccounts';
 import { AdminReports } from './pages/admin/AdminReports';
 import { AdminSettings } from './pages/admin/AdminSettings';
 import { useAuthStore } from './store';
@@ -91,6 +92,7 @@ function App() {
             <Route path="verifications" element={<AdminVerifications />} />
             <Route path="user-packages" element={<AdminUserPackages />} />
             <Route path="payment-matching" element={<AdminPaymentMatching />} />
+            <Route path="payment-accounts" element={<AdminPaymentAccounts />} />
             <Route path="banned-accounts" element={<AdminBannedAccounts />} />
             <Route path="help-activities" element={<AdminHelpActivities />} />
             <Route path="payments" element={<AdminPayments />} />

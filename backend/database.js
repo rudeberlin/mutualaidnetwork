@@ -93,6 +93,23 @@ export async function initializeDatabase() {
       )
     `);
 
+    // Create user_payment_accounts table for giver/receiver specific payout details
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS user_payment_accounts (
+        id SERIAL PRIMARY KEY,
+        user_id VARCHAR(255) REFERENCES users(id) ON DELETE CASCADE,
+        mode VARCHAR(20) NOT NULL, -- 'give' or 'receive'
+        account_name VARCHAR(255) NOT NULL,
+        account_number VARCHAR(50) NOT NULL,
+        bank_name VARCHAR(255) NOT NULL,
+        phone_number VARCHAR(50),
+        updated_by VARCHAR(255) REFERENCES users(id),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE (user_id, mode)
+      )
+    `);
+
     // Create help_activities table
     await client.query(`
       CREATE TABLE IF NOT EXISTS help_activities (
