@@ -297,8 +297,8 @@ export const UserDashboard: React.FC = () => {
             <p className="text-3xl font-bold text-white">
               {loadingStats ? '...' : dashboardStats.activePackagesCount}
             </p>
-            <p className="text-teal-400 text-sm mt-2">
-              {dashboardStats.activePackagesCount > 0 ? 'Growing your network' : 'Start a package'}
+            <p className="text-slate-400 text-xs mt-3">
+              {dashboardStats.activePackagesCount > 0 ? `${dashboardStats.activePackagesCount} active ${dashboardStats.activePackagesCount === 1 ? 'package' : 'packages'}` : 'No active packages'}
             </p>
           </div>
 
@@ -572,23 +572,32 @@ export const UserDashboard: React.FC = () => {
             </div>
           </div>
 
-          {/* Growth Chart & Referral Program Side by Side */}
+          {/* Available Packages & Referral Program Side by Side */}
           <div className="grid md:grid-cols-2 gap-6 mb-8">
-            {/* Network Growth Chart - Minimized */}
+            {/* Available Packages */}
             <div className="bg-gradient-to-br from-slate-800/40 to-slate-900/40 border border-slate-700/50 rounded-lg p-4 backdrop-blur-sm">
-              <h3 className="text-white font-bold text-sm mb-3">Network Growth</h3>
-              <div className="space-y-2">
-                {['W1', 'W2', 'W3', 'W4'].map((week, idx) => (
-                  <div key={idx} className="flex items-center gap-2">
-                    <span className="text-slate-400 text-xs w-8">{week}</span>
-                    <div className="flex-1 h-1.5 bg-slate-700/50 rounded-full overflow-hidden">
-                      <div 
-                        className="h-full bg-gradient-to-r from-emerald-500 to-teal-500"
-                        style={{ width: `${40 + idx * 15}%` }}
-                      ></div>
+              <h3 className="text-white font-bold text-sm mb-3">Available Packages</h3>
+              <div className="space-y-2 max-h-40 overflow-y-auto">
+                {PACKAGES.map((pkg) => (
+                  <button
+                    key={pkg.id}
+                    onClick={() => {
+                      setSelectedOfferPackage(pkg);
+                      setShowPackageSelection(false);
+                    }}
+                    className="w-full p-2 bg-slate-700/20 border border-slate-600/30 rounded hover:border-emerald-500/50 hover:bg-slate-700/40 transition-all text-left text-xs"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 min-w-0 flex-1">
+                        <span className="text-lg flex-shrink-0">{pkg.icon}</span>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-white font-semibold truncate">{pkg.name}</p>
+                          <p className="text-slate-400 text-xs">${pkg.amount}</p>
+                        </div>
+                      </div>
+                      <span className="text-emerald-400 font-semibold flex-shrink-0 ml-2">{pkg.returnPercentage}%</span>
                     </div>
-                    <span className="text-emerald-400 text-xs min-w-fit">{40 + idx * 15}%</span>
-                  </div>
+                  </button>
                 ))}
               </div>
             </div>

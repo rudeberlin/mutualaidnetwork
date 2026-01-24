@@ -1,24 +1,35 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Navbar } from '../components/Navbar';
-import { BarChart3, Users, DollarSign, TrendingUp, LogOut, Menu, X } from 'lucide-react';
+import { BarChart3, Users, DollarSign, TrendingUp, LogOut, Menu, X, AlertCircle } from 'lucide-react';
 import { useUIStore } from '../store';
+import { useAdminStore } from '../store/adminStore';
 import { MOCK_TRANSACTIONS } from '../utils/mockData';
 import { formatCurrency, formatDate } from '../utils/helpers';
 
-type AdminView = 'dashboard' | 'users' | 'investments' | 'funds' | 'transactions';
+ type AdminView = 'dashboard' | 'users' | 'investments' | 'funds' | 'transactions';
 
 export const AdminPanel: React.FC = () => {
   const [activeView, setActiveView] = useState<AdminView>('dashboard');
   const { isSidebarOpen, closeSidebar } = useUIStore();
+  const { loading, error, users, initData } = useAdminStore();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    initData();
+    // Refresh data every 10 seconds to show new registrations
+    const interval = setInterval(() => {
+      initData();
+    }, 10000);
+    return () => clearInterval(interval);
+  }, [initData]);
 
   const handleLogout = () => {
     navigate('/');
   };
 
   // Calculate Admin Stats
-  const totalUsers = 42;
+  const totalUsers = users.length;
   const activeInvestments = 28;
   const totalFundsManaged = 125000;
   const pendingPayments = 3;
@@ -96,6 +107,13 @@ export const AdminPanel: React.FC = () => {
             <div>
               <h1 className="heading-lg mb-8">Admin Dashboard</h1>
 
+              {error && (
+                <div className="glass p-4 mb-6 rounded-lg flex items-center gap-3 text-red-300 border border-red-500/30">
+                  <AlertCircle size={18} />
+                  <span>{error}</span>
+                </div>
+              )}
+
               {/* Stats Grid */}
               <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
                 {AdminStats.map((stat, idx) => {
@@ -123,31 +141,38 @@ export const AdminPanel: React.FC = () => {
                 <div className="card-glass">
                   <h3 className="heading-md text-lg mb-4">Recent Users</h3>
                   <div className="space-y-3">
-                    {[
-                      { id: '1', fullName: 'John Doe', email: 'john@example.com', profilePhoto: 'https://api.dicebear.com/7.x/avataaars/svg?seed=John', active: true },
-                      { id: '2', fullName: 'Jane Smith', email: 'jane@example.com', profilePhoto: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Jane', active: true },
-                      { id: '3', fullName: 'Mike Johnson', email: 'mike@example.com', profilePhoto: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Mike', active: false },
-                      { id: '4', fullName: 'Sarah Williams', email: 'sarah@example.com', profilePhoto: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah', active: true },
-                      { id: '5', fullName: 'Tom Brown', email: 'tom@example.com', profilePhoto: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Tom', active: false },
-                    ].map((user) => (
+                    {(loading ? Array(3).fill(null) : users.slice(0, 5)).map((user, idx) => (
                       <div
-                        key={user.id}
+                        key={user?.id ?? idx}
                         className="glass p-3 rounded-lg flex items-center justify-between"
                       >
                         <div className="flex items-center gap-3">
-                          <img
-                            src={user.profilePhoto}
-                            alt={user.fullName}
-                            className="w-8 h-8 rounded-full border border-gold-400/30"
-                          />
+                          {loading ? (
+                            <div className="w-8 h-8 rounded-full bg-white/10 animate-pulse" />
+                          ) : (
+                            <img
+                              src={user?.profilePhoto || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.fullName || 'User'}`}
+                              alt={user?.fullName || 'User'}
+                              className="w-8 h-8 rounded-full border border-gold-400/30"
+                            />
+                          )}
                           <div>
-                            <p className="font-semibold text-white text-sm">{user.fullName}</p>
-                            <p className="text-dark-300 text-xs">{user.email}</p>
+                            <p className="font-semibold text-white text-sm">
+                              {loading ? 'Loading…' : user?.fullName}
+                            </p>
+                            <p className="text-dark-300 text-xs">
+                              {loading ? 'Please wait' : user?.email}
+                            </p>
                           </div>
                         </div>
-                        {user.active && <span className="status-badge-success text-xs">Active</span>}
+                        {!loading && user?.isVerified && (
+                          <span className="status-badge-success text-xs">Active</span>
+                        )}
                       </div>
                     ))}
+                    {!loading && users.length === 0 && (
+                      <p className="text-dark-300 text-sm">No registrations found yet.</p>
+                    )}
                   </div>
                 </div>
 
@@ -195,42 +220,52 @@ export const AdminPanel: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {[
-                      { id: '1', fullName: 'John Doe', email: 'john@example.com', phone: '+1-234-567-8901', profilePhoto: 'https://api.dicebear.com/7.x/avataaars/svg?seed=John', active: true, createdAt: new Date('2024-01-15') },
-                      { id: '2', fullName: 'Jane Smith', email: 'jane@example.com', phone: '+1-234-567-8902', profilePhoto: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Jane', active: true, createdAt: new Date('2024-01-18') },
-                      { id: '3', fullName: 'Mike Johnson', email: 'mike@example.com', phone: '+1-234-567-8903', profilePhoto: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Mike', active: false, createdAt: new Date('2024-01-20') },
-                      { id: '4', fullName: 'Sarah Williams', email: 'sarah@example.com', phone: '+1-234-567-8904', profilePhoto: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah', active: true, createdAt: new Date('2024-01-22') },
-                    ].map((user) => (
-                      <tr key={user.id} className="border-b border-white/10 hover:bg-white/5">
+                    {(loading ? Array(5).fill(null) : users).map((user, idx) => (
+                      <tr key={user?.id ?? idx} className="border-b border-white/10 hover:bg-white/5">
                         <td className="px-4 py-4">
                           <div className="flex items-center gap-3">
-                            <img
-                              src={user.profilePhoto}
-                              alt={user.fullName}
-                              className="w-8 h-8 rounded-full"
-                            />
-                            <p className="font-semibold text-white">{user.fullName}</p>
+                            {loading ? (
+                              <div className="w-8 h-8 rounded-full bg-white/10 animate-pulse" />
+                            ) : (
+                              <img
+                                src={user?.profilePhoto || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.fullName || 'User'}`}
+                                alt={user?.fullName || 'User'}
+                                className="w-8 h-8 rounded-full"
+                              />
+                            )}
+                            <p className="font-semibold text-white">
+                              {loading ? 'Loading…' : user?.fullName}
+                            </p>
                           </div>
                         </td>
-                        <td className="px-4 py-4 text-dark-300">{user.email}</td>
-                        <td className="px-4 py-4 text-dark-300">{user.phone}</td>
+                        <td className="px-4 py-4 text-dark-300">{loading ? '—' : user?.email}</td>
+                        <td className="px-4 py-4 text-dark-300">{loading ? '—' : user?.phoneNumber}</td>
                         <td className="px-4 py-4">
-                          {user.active ? (
-                            <span className="status-badge-success">Active</span>
+                          {loading ? (
+                            <span className="status-badge">Loading</span>
+                          ) : user?.isVerified ? (
+                            <span className="status-badge-success">Verified</span>
                           ) : (
-                            <span className="status-badge">Inactive</span>
+                            <span className="status-badge">Pending</span>
                           )}
                         </td>
                         <td className="px-4 py-4 text-dark-300 text-sm">
-                          {formatDate(user.createdAt)}
+                          {loading || !user?.createdAt ? '—' : formatDate(user.createdAt)}
                         </td>
                         <td className="px-4 py-4">
-                          <button className="text-gold-400 hover:text-gold-300 font-semibold text-sm">
+                          <button className="text-gold-400 hover:text-gold-300 font-semibold text-sm" disabled={loading}>
                             View
                           </button>
                         </td>
                       </tr>
                     ))}
+                    {!loading && users.length === 0 && (
+                      <tr>
+                        <td className="px-4 py-4 text-dark-300" colSpan={6}>
+                          No registrations found yet.
+                        </td>
+                      </tr>
+                    )}
                   </tbody>
                 </table>
               </div>
