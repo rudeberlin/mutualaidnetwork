@@ -572,33 +572,80 @@ export const UserDashboard: React.FC = () => {
             </div>
           </div>
 
-          {/* Available Packages & Referral Program Side by Side */}
+          {/* Active Packages & Referral Program Side by Side */}
           <div className="grid md:grid-cols-2 gap-6 mb-8">
-            {/* Available Packages */}
-            <div className="bg-gradient-to-br from-slate-800/40 to-slate-900/40 border border-slate-700/50 rounded-lg p-4 backdrop-blur-sm">
-              <h3 className="text-white font-bold text-sm mb-3">Available Packages</h3>
-              <div className="space-y-2 max-h-40 overflow-y-auto">
-                {PACKAGES.map((pkg) => (
-                  <button
-                    key={pkg.id}
-                    onClick={() => {
-                      setSelectedOfferPackage(pkg);
-                      setShowPackageSelection(false);
-                    }}
-                    className="w-full p-2 bg-slate-700/20 border border-slate-600/30 rounded hover:border-emerald-500/50 hover:bg-slate-700/40 transition-all text-left text-xs"
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 min-w-0 flex-1">
-                        <span className="text-lg flex-shrink-0">{pkg.icon}</span>
-                        <div className="min-w-0 flex-1">
-                          <p className="text-white font-semibold truncate">{pkg.name}</p>
-                          <p className="text-slate-400 text-xs">${pkg.amount}</p>
+            {/* Active Packages - Interest Accrual Clock */}
+            <div className="bg-gradient-to-br from-slate-800/40 to-slate-900/40 border border-slate-700/50 rounded-lg p-6 backdrop-blur-sm">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-white font-bold">Active Packages</h3>
+                <div className="relative w-12 h-12 flex items-center justify-center">
+                  {/* Clock face */}
+                  <div className="absolute inset-0 rounded-full border-2 border-slate-600/50"></div>
+                  {/* Hour hand */}
+                  <div className="absolute w-1 h-3 bg-emerald-400 rounded-full origin-bottom" style={{ transform: 'translateY(-3px) rotate(45deg)' }}></div>
+                  {/* Minute hand */}
+                  <div className="absolute w-0.5 h-4 bg-teal-400 rounded-full origin-bottom" style={{ transform: 'translateY(-4px) rotate(180deg)', animation: 'spin 60s linear infinite' }}></div>
+                  {/* Center dot */}
+                  <div className="absolute w-2 h-2 bg-slate-400 rounded-full"></div>
+                </div>
+              </div>
+              
+              <div className="space-y-3">
+                {dashboardStats.activePackages && dashboardStats.activePackages.length > 0 ? (
+                  dashboardStats.activePackages.map((pkg: any, idx: number) => {
+                    // Calculate hourly interest accrual (daily % / 24)
+                    const dailyReturn = 0.5; // 50% per day for example
+                    const hourlyReturn = ((dailyReturn / 24) * 100).toFixed(2);
+                    const hoursSinceStart = Math.floor((Date.now() - new Date(pkg.created_at).getTime()) / (1000 * 60 * 60));
+                    const accruedPercentage = Math.min((hourlyReturn as any) * hoursSinceStart, dailyReturn * 100);
+                    
+                    return (
+                      <div key={idx} className="bg-slate-700/30 border border-slate-600/30 rounded-lg p-3">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="min-w-0 flex-1">
+                            <p className="text-white font-semibold text-sm">{pkg.package_name}</p>
+                            <p className="text-slate-400 text-xs">${pkg.amount}</p>
+                          </div>
+                          <div className="text-right ml-2">
+                            <p className="text-emerald-400 font-bold text-xs">{hourlyReturn}%/hr</p>
+                            <p className="text-slate-400 text-xs">{accruedPercentage.toFixed(1)}% accrued</p>
+                          </div>
+                        </div>
+                        {/* Progress bar */}
+                        <div className="w-full h-1.5 bg-slate-700/50 rounded-full overflow-hidden">
+                          <div 
+                            className="h-full bg-gradient-to-r from-emerald-500 to-teal-500 transition-all"
+                            style={{ width: `${Math.min(accruedPercentage, 100)}%` }}
+                          ></div>
                         </div>
                       </div>
-                      <span className="text-emerald-400 font-semibold flex-shrink-0 ml-2">{pkg.returnPercentage}%</span>
-                    </div>
-                  </button>
-                ))}
+                    );
+                  })
+                ) : (
+                  <div className="text-center py-4">
+                    <p className="text-slate-400 text-sm">No active packages</p>
+                    <p className="text-slate-500 text-xs mt-1">Start by selecting a package from below</p>
+                  </div>
+                )}
+              </div>
+              
+              {/* Hourly interest breakdown */}
+              <div className="mt-4 pt-4 border-t border-slate-700/30">
+                <p className="text-slate-400 text-xs mb-2 font-semibold">Daily Interest Rate Breakdown</p>
+                <div className="grid grid-cols-3 gap-2 text-center text-xs">
+                  <div className="bg-slate-700/20 rounded p-2">
+                    <p className="text-slate-500">Per Hour</p>
+                    <p className="text-emerald-400 font-bold">~0.02%</p>
+                  </div>
+                  <div className="bg-slate-700/20 rounded p-2">
+                    <p className="text-slate-500">Per Day</p>
+                    <p className="text-teal-400 font-bold">0.5%</p>
+                  </div>
+                  <div className="bg-slate-700/20 rounded p-2">
+                    <p className="text-slate-500">Per Month</p>
+                    <p className="text-cyan-400 font-bold">~15%</p>
+                  </div>
+                </div>
               </div>
             </div>
 

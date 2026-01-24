@@ -89,3 +89,12 @@ html {
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(232, 191, 60, 0.5);
 }
+/* Clock hand animation */
+@keyframes spin {
+  from {
+    transform: translateY(-4px) rotate(0deg);
+  }
+  to {
+    transform: translateY(-4px) rotate(360deg);
+  }
+}

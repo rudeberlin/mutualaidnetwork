@@ -52,18 +52,39 @@ export const HomePage: React.FC = () => {
               </div>
             </div>
 
-            {/* Hero Image - Placeholder */}
-            <div className="hidden md:block">
-              <div className="glass-lg p-8 rounded-2xl aspect-square flex items-center justify-center overflow-hidden">
-                <div className="relative w-full h-full flex items-center justify-center">
-                  {/* Animated gradient circle */}
-                  <div className="absolute inset-0 bg-gradient-to-br from-gold-400/20 to-transparent rounded-full blur-3xl animate-pulse"></div>
-
-                  {/* Content */}
-                  <div className="relative text-center">
-                    <TrendingUp size={80} className="text-gold-400 mx-auto mb-4 opacity-20" />
-                    <p className="text-gold-400/50 font-semibold">Investment Growth</p>
+            {/* Hero Image - Professional Dashboard Screenshot Placeholder */}
+            <div className="hidden md:flex md:flex-col gap-6">
+              {/* Main Image Placeholder */}
+              <div className="glass-lg rounded-2xl overflow-hidden aspect-video flex items-center justify-center bg-gradient-to-br from-slate-800 to-slate-900 border border-gold-500/20 group hover:border-gold-400/50 transition-all">
+                <div className="relative w-full h-full flex items-center justify-center p-8">
+                  {/* Background gradient effect */}
+                  <div className="absolute inset-0 bg-gradient-to-br from-gold-400/5 via-transparent to-emerald-500/5"></div>
+                  
+                  {/* Placeholder content - EASY TO REPLACE */}
+                  <div className="relative text-center space-y-4">
+                    <div className="inline-block p-4 bg-gold-500/10 rounded-full group-hover:bg-gold-500/20 transition-all">
+                      <TrendingUp size={48} className="text-gold-400" />
+                    </div>
+                    <div>
+                      <p className="text-gold-400 font-bold text-lg">Dashboard Preview</p>
+                      <p className="text-slate-400 text-sm mt-1">📍 PLACEHOLDER: Replace with dashboard screenshot</p>
+                      <p className="text-slate-500 text-xs mt-2 max-w-xs mx-auto">
+                        Image path: <code className="bg-slate-900/50 px-2 py-1 rounded text-gold-300">/src/assets/dashboard-preview.png</code>
+                      </p>
+                    </div>
                   </div>
+                </div>
+              </div>
+
+              {/* Stats Cards Below Image */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="glass-lg p-4 rounded-lg text-center hover:bg-white/10 transition">
+                  <p className="text-gold-400 font-bold text-lg">30-50%</p>
+                  <p className="text-slate-400 text-xs">Annual ROI</p>
+                </div>
+                <div className="glass-lg p-4 rounded-lg text-center hover:bg-white/10 transition">
+                  <p className="text-emerald-400 font-bold text-lg">24/7</p>
+                  <p className="text-slate-400 text-xs">Support</p>
                 </div>
               </div>
             </div>
@@ -71,11 +92,11 @@ export const HomePage: React.FC = () => {
         </div>
       </section>
 
-      {/* Features Section */}
+      {/* Features Section - Moved after hero */}
       <section className="px-4 py-20 bg-white/5">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-16">
-            <h2 className="heading-md mb-4">Why Choose InvestPlatform?</h2>
+            <h2 className="heading-md mb-4">Why Choose Mutual Aid Network?</h2>
             <p className="text-dark-300 max-w-2xl mx-auto">
               We provide the tools and security you need to invest with confidence.
             </p>
