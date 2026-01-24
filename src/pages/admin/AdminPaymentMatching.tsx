@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useAuthStore } from '../../store';
-import { Link2, Clock, CheckCircle, Ban } from 'lucide-react';
+import { Toast } from '../../components/Toast';
+import { Link2, Clock, CheckCircle, Ban, X } from 'lucide-react';
 import { format, differenceInHours } from 'date-fns';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
@@ -45,6 +46,8 @@ export const AdminPaymentMatching: React.FC = () => {
   const [matches, setMatches] = useState<PaymentMatch[]>([]);
   const [selectedReceiver, setSelectedReceiver] = useState<PendingReceiver | null>(null);
   const [selectedGiver, setSelectedGiver] = useState<AvailableGiver | null>(null);
+  const [showAssignModal, setShowAssignModal] = useState<{ type: 'receiver' | 'giver'; data: any } | null>(null);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const { token } = useAuthStore();
 
   const fetchData = async () => {
@@ -90,11 +93,13 @@ export const AdminPaymentMatching: React.FC = () => {
         { headers: { Authorization: `Bearer ${token}` } }
       );
       
+      setToast({ message: `Match created: ${selectedGiver.full_name} → ${selectedReceiver.full_name}`, type: 'success' });
       setSelectedReceiver(null);
       setSelectedGiver(null);
       fetchData();
-    } catch (error) {
-      console.error('Failed to create match:', error);
+    } catch (error: any) {
+      const errorMsg = error.response?.data?.error || 'Failed to create match';
+      setToast({ message: errorMsg, type: 'error' });
     }
   };
 
@@ -105,9 +110,11 @@ export const AdminPaymentMatching: React.FC = () => {
         {},
         { headers: { Authorization: `Bearer ${token}` } }
       );
+      setToast({ message: 'Payment confirmed successfully', type: 'success' });
       fetchData();
-    } catch (error) {
-      console.error('Failed to confirm payment:', error);
+    } catch (error: any) {
+      const errorMsg = error.response?.data?.error || 'Failed to confirm payment';
+      setToast({ message: errorMsg, type: 'error' });
     }
   };
 
@@ -123,14 +130,24 @@ export const AdminPaymentMatching: React.FC = () => {
         },
         { headers: { Authorization: `Bearer ${token}` } }
       );
+      setToast({ message: `User ${userName} has been banned`, type: 'success' });
       fetchData();
-    } catch (error) {
-      console.error('Failed to ban user:', error);
+    } catch (error: any) {
+      const errorMsg = error.response?.data?.error || 'Failed to ban user';
+      setToast({ message: errorMsg, type: 'error' });
     }
   };
 
   return (
     <div className="space-y-6">
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
+
       <div>
         <p className="text-emerald-300 text-sm">Match users for payments</p>
         <h1 className="text-2xl font-bold text-white">Payment Matching</h1>
@@ -155,9 +172,20 @@ export const AdminPaymentMatching: React.FC = () => {
                   <p className="text-white font-semibold">{receiver.full_name}</p>
                   <p className="text-slate-400 text-sm">{receiver.email}</p>
                 </div>
-                <div className="text-right">
-                  <p className="text-emerald-400 font-bold">${receiver.amount}</p>
-                  <p className="text-slate-400 text-xs">{receiver.package_name}</p>
+                <div className="flex items-center gap-3">
+                  <div className="text-right">
+                    <p className="text-emerald-400 font-bold">${receiver.amount}</p>
+                    <p className="text-slate-400 text-xs">{receiver.package_name}</p>
+                  </div>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowAssignModal({ type: 'receiver', data: receiver });
+                    }}
+                    className="px-3 py-1 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-semibold rounded transition"
+                  >
+                    ASSIGN
+                  </button>
                 </div>
               </div>
             </div>
@@ -184,9 +212,20 @@ export const AdminPaymentMatching: React.FC = () => {
                   <p className="text-white font-semibold">{giver.full_name}</p>
                   <p className="text-slate-400 text-sm">{giver.phone_number}</p>
                 </div>
-                <div className="text-right">
-                  <p className="text-slate-300 text-sm">Total Earned:</p>
-                  <p className="text-blue-400 font-bold">${giver.total_earnings}</p>
+                <div className="flex items-center gap-3">
+                  <div className="text-right">
+                    <p className="text-slate-300 text-sm">Total Earned:</p>
+                    <p className="text-blue-400 font-bold">${giver.total_earnings}</p>
+                  </div>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowAssignModal({ type: 'giver', data: giver });
+                    }}
+                    className="px-3 py-1 bg-blue-500 hover:bg-blue-600 text-white text-xs font-semibold rounded transition"
+                  >
+                    ASSIGN
+                  </button>
                 </div>
               </div>
             </div>
@@ -283,6 +322,104 @@ export const AdminPaymentMatching: React.FC = () => {
                                 <Ban size={12} /> Ban
                               </button>
                             )}
+
+      {/* Assign Modal */}
+      {showAssignModal && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-700 rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-6 border-b border-slate-700">
+              <h3 className="text-xl font-bold text-white">
+                {showAssignModal.type === 'receiver' ? 'Assign Giver' : 'Assign Receiver'}
+              </h3>
+              <button
+                onClick={() => setShowAssignModal(null)}
+                className="text-slate-400 hover:text-white"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="p-6">
+              {/* Selected User Info */}
+              <div className="mb-4 p-4 bg-slate-800/50 rounded-lg">
+                <p className="text-slate-400 text-xs mb-1">Selected {showAssignModal.type === 'receiver' ? 'Receiver' : 'Giver'}</p>
+                <p className="text-white font-semibold">{showAssignModal.data.full_name}</p>
+                <p className="text-emerald-400 font-bold">
+                  ${showAssignModal.type === 'receiver' ? showAssignModal.data.amount : showAssignModal.data.total_earnings}
+                </p>
+                {showAssignModal.type === 'receiver' && (
+                  <p className="text-slate-400 text-xs">{showAssignModal.data.package_name}</p>
+                )}
+              </div>
+
+              {/* Available Matches */}
+              <div className="space-y-2">
+                <p className="text-slate-300 text-sm font-semibold mb-3">
+                  Available {showAssignModal.type === 'receiver' ? 'Givers' : 'Receivers'}:
+                </p>
+                
+                {showAssignModal.type === 'receiver' ? (
+                  // Show available givers
+                  availableGivers.length > 0 ? (
+                    availableGivers.map((giver) => (
+                      <div
+                        key={giver.id}
+                        onClick={() => {
+                          setSelectedReceiver(showAssignModal.data);
+                          setSelectedGiver(giver);
+                          setShowAssignModal(null);
+                        }}
+                        className="p-3 bg-slate-800/40 hover:bg-slate-800/60 border border-slate-700 hover:border-blue-500 rounded-lg cursor-pointer transition"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-white font-semibold">{giver.full_name}</p>
+                            <p className="text-slate-400 text-xs">{giver.phone_number}</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-blue-400 font-bold text-sm">${giver.total_earnings}</p>
+                            <p className="text-slate-400 text-xs">Total Earned</p>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-slate-400 text-sm text-center py-4">No available givers</p>
+                  )
+                ) : (
+                  // Show available receivers
+                  pendingReceivers.length > 0 ? (
+                    pendingReceivers.map((receiver) => (
+                      <div
+                        key={receiver.id}
+                        onClick={() => {
+                          setSelectedGiver(showAssignModal.data);
+                          setSelectedReceiver(receiver);
+                          setShowAssignModal(null);
+                        }}
+                        className="p-3 bg-slate-800/40 hover:bg-slate-800/60 border border-slate-700 hover:border-emerald-500 rounded-lg cursor-pointer transition"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-white font-semibold">{receiver.full_name}</p>
+                            <p className="text-slate-400 text-xs">{receiver.email}</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-emerald-400 font-bold text-sm">${receiver.amount}</p>
+                            <p className="text-slate-400 text-xs">{receiver.package_name}</p>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-slate-400 text-sm text-center py-4">No pending receivers</p>
+                  )
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
                           </>
                         )}
                       </div>

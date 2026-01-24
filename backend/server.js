@@ -325,6 +325,107 @@ app.get('/api/user/:id', authenticateToken, async (req, res) => {
   }
 });
 
+// PUT update user profile
+app.put('/api/user/:id', authenticateToken, async (req, res) => {
+  try {
+    // Only allow users to update their own profile, or admins to update any profile
+    if (req.userId !== req.params.id) {
+      const adminResult = await pool.query('SELECT role FROM users WHERE id = $1', [req.userId]);
+      if (adminResult.rows.length === 0 || adminResult.rows[0].role !== 'admin') {
+        return res.status(403).json({ success: false, error: 'Unauthorized' });
+      }
+    }
+
+    const { fullName, email, phoneNumber, country } = req.body;
+
+    // Validate input
+    if (!fullName || !email || !phoneNumber) {
+      return res.status(400).json({ success: false, error: 'Full name, email, and phone number are required' });
+    }
+
+    // Check if email is already taken by another user
+    if (email) {
+      const emailCheck = await pool.query('SELECT id FROM users WHERE email = $1 AND id != $2', [email, req.params.id]);
+      if (emailCheck.rows.length > 0) {
+        return res.status(400).json({ success: false, error: 'Email already in use' });
+      }
+    }
+
+    const result = await pool.query(`
+      UPDATE users 
+      SET full_name = $1, email = $2, phone_number = $3, country = $4, updated_at = CURRENT_TIMESTAMP
+      WHERE id = $5
+      RETURNING id, full_name, username, email, phone_number, country, my_referral_code, profile_photo, role, is_verified, payment_method_verified, total_earnings, created_at, updated_at
+    `, [fullName, email, phoneNumber, country || 'Unknown', req.params.id]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'User not found' });
+    }
+
+    res.json({
+      success: true,
+      message: 'Profile updated successfully',
+      data: result.rows[0],
+    });
+  } catch (error) {
+    console.error('Profile update error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// POST change user password
+app.post('/api/user/:id/password', authenticateToken, async (req, res) => {
+  try {
+    // Only allow users to change their own password
+    if (req.userId !== req.params.id) {
+      return res.status(403).json({ success: false, error: 'Unauthorized' });
+    }
+
+    const { oldPassword, newPassword, confirmPassword } = req.body;
+
+    // Validate input
+    if (!oldPassword || !newPassword || !confirmPassword) {
+      return res.status(400).json({ success: false, error: 'All password fields are required' });
+    }
+
+    if (newPassword !== confirmPassword) {
+      return res.status(400).json({ success: false, error: 'New passwords do not match' });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({ success: false, error: 'New password must be at least 6 characters' });
+    }
+
+    // Get current password hash
+    const userResult = await pool.query('SELECT password_hash FROM users WHERE id = $1', [req.params.id]);
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'User not found' });
+    }
+
+    const passwordHash = userResult.rows[0].password_hash;
+
+    // Verify old password
+    const passwordMatch = await bcryptjs.compare(oldPassword, passwordHash);
+    if (!passwordMatch) {
+      return res.status(401).json({ success: false, error: 'Current password is incorrect' });
+    }
+
+    // Hash new password
+    const newPasswordHash = await bcryptjs.hash(newPassword, 10);
+
+    // Update password
+    await pool.query('UPDATE users SET password_hash = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2', [newPasswordHash, req.params.id]);
+
+    res.json({
+      success: true,
+      message: 'Password changed successfully',
+    });
+  } catch (error) {
+    console.error('Password change error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // GET user dashboard stats
 app.get('/api/user/:userId/stats', authenticateToken, async (req, res) => {
   try {
@@ -492,6 +593,70 @@ app.get('/api/admin/users', authenticateToken, requireAdmin, async (req, res) =>
     res.json({ success: true, data: result.rows });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// DELETE admin user with cascade
+app.delete('/api/admin/users/:id', authenticateToken, requireAdmin, async (req, res) => {
+  const client = await pool.connect();
+  try {
+    // Start transaction
+    await client.query('BEGIN');
+
+    const userId = req.params.id;
+
+    // Check if user exists
+    const userCheck = await client.query('SELECT id, role FROM users WHERE id = $1', [userId]);
+    if (userCheck.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ success: false, error: 'User not found' });
+    }
+
+    // Prevent deletion of admin users
+    if (userCheck.rows[0].role === 'admin') {
+      await client.query('ROLLBACK');
+      return res.status(403).json({ success: false, error: 'Cannot delete admin users' });
+    }
+
+    // Delete user's related data in order of foreign key dependencies
+    // 1. Delete payment matches
+    await client.query('DELETE FROM payment_matches WHERE giver_user_id = $1 OR receiver_user_id = $1', [userId]);
+
+    // 2. Delete help activities
+    await client.query('DELETE FROM help_activities WHERE user_id = $1', [userId]);
+
+    // 3. Delete user packages
+    await client.query('DELETE FROM user_packages WHERE user_id = $1', [userId]);
+
+    // 4. Delete payment methods
+    await client.query('DELETE FROM payment_methods WHERE user_id = $1', [userId]);
+
+    // 5. Delete user payment accounts
+    await client.query('DELETE FROM user_payment_accounts WHERE user_id = $1', [userId]);
+
+    // 6. Delete transactions
+    await client.query('DELETE FROM transactions WHERE user_id = $1', [userId]);
+
+    // 7. Delete banned accounts records
+    await client.query('DELETE FROM banned_accounts WHERE user_id = $1', [userId]);
+
+    // 8. Delete the user
+    const result = await client.query('DELETE FROM users WHERE id = $1 RETURNING id, full_name, email', [userId]);
+
+    // Commit transaction
+    await client.query('COMMIT');
+
+    res.json({
+      success: true,
+      message: `User ${result.rows[0].full_name} (${result.rows[0].email}) deleted successfully`,
+      data: result.rows[0]
+    });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('User deletion error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  } finally {
+    client.release();
   }
 });
 
@@ -775,14 +940,16 @@ app.post('/api/admin/user-packages/:id/reset', authenticateToken, requireAdmin, 
 // Get users pending to receive help
 app.get('/api/admin/pending-receivers', authenticateToken, requireAdmin, async (req, res) => {
   try {
+    // Get help_activities where users are WAITING TO RECEIVE help
+    // These would be users without a matched giver yet
     const result = await pool.query(`
-      SELECT ha.id as activity_id, u.id, u.full_name, u.email, u.phone_number, 
-             p.name as package_name, ha.amount, ha.created_at
+      SELECT DISTINCT ON (u.id) u.id, u.full_name, u.email, u.phone_number, 
+             p.name as package_name, ha.amount, ha.created_at, ha.id as activity_id
       FROM help_activities ha
-      JOIN users u ON ha.giver_id = u.id
+      JOIN users u ON ha.receiver_id = u.id
       JOIN packages p ON ha.package_id = p.id
-      WHERE ha.status = 'pending' AND ha.receiver_id IS NULL
-      ORDER BY ha.created_at ASC
+      WHERE ha.status = 'pending' AND ha.giver_id IS NULL
+      ORDER BY u.id, ha.created_at ASC
     `);
     res.json({ success: true, data: result.rows });
   } catch (error) {
@@ -793,15 +960,15 @@ app.get('/api/admin/pending-receivers', authenticateToken, requireAdmin, async (
 // Get users available to give help
 app.get('/api/admin/available-givers', authenticateToken, requireAdmin, async (req, res) => {
   try {
+    // Get users who offered to give help (created help_activity as givers) and haven't been matched yet
     const result = await pool.query(`
-      SELECT u.id, u.full_name, u.email, u.phone_number, u.total_earnings
+      SELECT DISTINCT ON (u.id) u.id, u.full_name, u.email, u.phone_number, u.total_earnings
       FROM users u
-      WHERE u.id NOT IN (
-        SELECT giver_id FROM help_activities WHERE status IN ('pending', 'active')
-      )
+      JOIN help_activities ha ON u.id = ha.giver_id
+      WHERE ha.status = 'pending' AND ha.receiver_id IS NULL
       AND u.role = 'member'
       AND u.is_verified = true
-      ORDER BY u.created_at ASC
+      ORDER BY u.id, ha.created_at ASC
     `);
     res.json({ success: true, data: result.rows });
   } catch (error) {
@@ -1026,6 +1193,39 @@ app.get('/api/user/:userId/payment-match', authenticateToken, async (req, res) =
     }
 
     res.json({ success: true, data: null });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// User confirms payment sent/received
+app.post('/api/user/payment-confirm', authenticateToken, async (req, res) => {
+  try {
+    const { matchId } = req.body;
+
+    if (!matchId) {
+      return res.status(400).json({ success: false, error: 'Match ID is required' });
+    }
+
+    // Update payment match status to awaiting_confirmation
+    const result = await pool.query(
+      `UPDATE payment_matches 
+       SET status = 'awaiting_confirmation' 
+       WHERE id = $1 
+       AND (giver_id = $2 OR receiver_id = $2)
+       RETURNING *`,
+      [matchId, req.userId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Match not found or unauthorized' });
+    }
+
+    res.json({ 
+      success: true, 
+      message: 'Payment confirmation submitted. Admin will verify.',
+      data: result.rows[0] 
+    });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }

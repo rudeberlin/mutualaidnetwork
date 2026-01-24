@@ -129,6 +129,12 @@ export async function initializeDatabase() {
       )
     `);
 
+    // Add admin_approved column if it doesn't exist (migration for existing databases)
+    await client.query(`
+      ALTER TABLE help_activities
+      ADD COLUMN IF NOT EXISTS admin_approved BOOLEAN DEFAULT FALSE
+    `);
+
     // Create user_packages table for tracking user subscriptions
     await client.query(`
       CREATE TABLE IF NOT EXISTS user_packages (
@@ -207,6 +213,52 @@ export async function initializeDatabase() {
       console.log('✅ Default admin user created');
       console.log(`📧 Admin Email: ${adminEmail}`);
       console.log(`🔑 Admin Password: ${adminPassword}`);
+    }
+
+    // Seed test users for payment matching workflow
+    const testUserCheck = await client.query('SELECT id FROM users WHERE email = $1', ['testgiver@example.com']);
+    if (testUserCheck.rows.length === 0) {
+      const passwordHash = await bcryptjs.hash('Test1234', 10);
+      
+      // Create test giver
+      await client.query(`
+        INSERT INTO users (
+          id, full_name, username, email, phone_number, country, 
+          my_referral_code, password_hash, role, is_verified, 
+          id_verified, payment_method_verified, total_earnings
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+      `, ['user-giver-001', 'John Giver', 'johngiver', 'testgiver@example.com', '+1234567890', 'Nigeria',
+          'GIVER001', passwordHash, 'member', true, true, true, 5000]);
+      
+      // Create test receiver
+      await client.query(`
+        INSERT INTO users (
+          id, full_name, username, email, phone_number, country, 
+          my_referral_code, password_hash, role, is_verified, 
+          id_verified, payment_method_verified, total_earnings
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+      `, ['user-receiver-001', 'Jane Receiver', 'janereceiver', 'testreceiver@example.com', '+1987654321', 'Nigeria',
+          'RECEIVER001', passwordHash, 'member', true, true, true, 0]);
+      
+      console.log('✅ Test users for payment matching created');
+    }
+
+    // Seed test help_activities
+    const helpActivityCheck = await client.query('SELECT id FROM help_activities LIMIT 1');
+    if (helpActivityCheck.rows.length === 0) {
+      await client.query(`
+        INSERT INTO help_activities (
+          id, giver_id, receiver_id, package_id, amount, status, admin_approved, created_at, updated_at
+        )
+        VALUES 
+          ('help-001', 'user-giver-001', 'user-receiver-001', 'pkg-3', 250, 'pending', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+          ('help-002', 'user-giver-001', NULL, 'pkg-2', 100, 'pending', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+          ('help-003', NULL, 'user-receiver-001', 'pkg-1', 25, 'pending', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+      `);
+      
+      console.log('✅ Test help_activities created');
     }
 
     console.log('✅ Database tables initialized successfully');

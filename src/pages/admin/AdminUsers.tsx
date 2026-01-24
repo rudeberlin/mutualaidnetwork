@@ -1,14 +1,56 @@
 import React, { useState } from 'react';
+import axios from 'axios';
 import { useAdminStore } from '../../store/adminStore';
-import { ShieldCheck, Ban, RefreshCw, Eye, X } from 'lucide-react';
+import { useAuthStore } from '../../store';
+import { ShieldCheck, Ban, RefreshCw, Eye, X, Trash2 } from 'lucide-react';
+import { Toast } from '../../components/Toast';
 import { format } from 'date-fns';
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 export const AdminUsers: React.FC = () => {
   const { users, suspendUser, reactivateUser } = useAdminStore();
+  const { token } = useAuthStore();
   const [viewingUser, setViewingUser] = useState<typeof users[0] | null>(null);
+  const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  const handleDeleteUser = async (userId: string) => {
+    setDeleting(true);
+    try {
+      const response = await axios.delete(
+        `${API_URL}/api/admin/users/${userId}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      if (response.data.success) {
+        setToast({ message: `User deleted successfully: ${response.data.data.full_name}`, type: 'success' });
+        setDeletingUserId(null);
+        setViewingUser(null);
+        // Refresh admin data
+        setTimeout(() => {
+          window.location.reload();
+        }, 1500);
+      }
+    } catch (error: any) {
+      const errorMsg = error.response?.data?.error || 'Failed to delete user';
+      setToast({ message: errorMsg, type: 'error' });
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   return (
     <div className="space-y-4">
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
+
       <div className="flex items-center justify-between">
         <div>
           <p className="text-emerald-300 text-sm">Manage members</p>
@@ -20,6 +62,7 @@ export const AdminUsers: React.FC = () => {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-white/10 text-slate-300">
+              <th className="px-4 py-3 text-left">ID</th>
               <th className="px-4 py-3 text-left">User</th>
               <th className="px-4 py-3 text-left">Username</th>
               <th className="px-4 py-3 text-left">Email</th>
@@ -33,6 +76,11 @@ export const AdminUsers: React.FC = () => {
           <tbody className="divide-y divide-white/5">
             {users.map((u) => (
               <tr key={u.id} className="hover:bg-white/5 text-slate-200">
+                <td className="px-4 py-3">
+                  <div className="font-mono text-xs text-slate-400">
+                    {u.id.substring(0, 8)}...
+                  </div>
+                </td>
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-3">
                     <img
@@ -69,20 +117,26 @@ export const AdminUsers: React.FC = () => {
                     {u.isVerified ? (
                       <button
                         onClick={() => suspendUser(u.id)}
-                        className="px-3 py-1 rounded-lg bg-red-500/15 text-red-200 text-xs flex items-center gap-1"
+                        className="px-3 py-1 rounded-lg bg-red-500/15 text-red-200 text-xs flex items-center gap-1 hover:bg-red-500/25 transition"
                       >
                         <Ban size={14} /> Suspend
                       </button>
                     ) : (
                       <button
                         onClick={() => reactivateUser(u.id)}
-                        className="px-3 py-1 rounded-lg bg-emerald-500/15 text-emerald-200 text-xs flex items-center gap-1"
+                        className="px-3 py-1 rounded-lg bg-emerald-500/15 text-emerald-200 text-xs flex items-center gap-1 hover:bg-emerald-500/25 transition"
                       >
                         <RefreshCw size={14} /> Reactivate
                       </button>
                     )}
-                    <button onClick={() => setViewingUser(u)} className="px-3 py-1 rounded-lg bg-white/10 text-white text-xs flex items-center gap-1">
+                    <button onClick={() => setViewingUser(u)} className="px-3 py-1 rounded-lg bg-white/10 text-white text-xs flex items-center gap-1 hover:bg-white/20 transition">
                       <Eye size={14} /> View
+                    </button>
+                    <button 
+                      onClick={() => setDeletingUserId(u.id)}
+                      className="px-3 py-1 rounded-lg bg-red-500/15 text-red-200 text-xs flex items-center gap-1 hover:bg-red-500/25 transition"
+                    >
+                      <Trash2 size={14} /> Delete
                     </button>
                   </div>
                 </td>
@@ -91,6 +145,50 @@ export const AdminUsers: React.FC = () => {
           </tbody>
         </table>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {deletingUserId && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setDeletingUserId(null)}>
+          <div className="bg-slate-900 rounded-2xl max-w-sm w-full border border-red-500/30" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-6 border-b border-red-500/20">
+              <h3 className="text-red-400 font-bold text-lg flex items-center gap-2">
+                <Trash2 size={20} /> Confirm Deletion
+              </h3>
+            </div>
+            <div className="p-6 space-y-4">
+              <p className="text-slate-300">
+                Are you sure you want to permanently delete user <span className="font-bold text-white">{users.find(u => u.id === deletingUserId)?.fullName}</span>?
+              </p>
+              <p className="text-sm text-slate-400">
+                This action will:
+              </p>
+              <ul className="text-sm text-slate-400 space-y-1 ml-4 list-disc">
+                <li>Remove all user data</li>
+                <li>Delete associated packages and matches</li>
+                <li>Remove payment methods and accounts</li>
+                <li>Clear all transactions</li>
+              </ul>
+              <p className="text-sm text-red-300 font-semibold">This cannot be undone.</p>
+            </div>
+            <div className="flex gap-3 p-6 border-t border-red-500/20">
+              <button
+                onClick={() => setDeletingUserId(null)}
+                disabled={deleting}
+                className="flex-1 px-4 py-2 border border-slate-600 text-slate-300 rounded-lg hover:bg-slate-700/50 transition-colors font-semibold disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleDeleteUser(deletingUserId)}
+                disabled={deleting}
+                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-semibold disabled:opacity-50"
+              >
+                {deleting ? 'Deleting...' : 'Delete User'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* User Detail Modal */}
       {viewingUser && (

@@ -2,6 +2,7 @@
 export { Navbar, Footer, LoadingSpinner, SuccessMessage, ErrorMessage } from './Navbar';
 export { PlanCard } from './PlanCard';
 export { PaymentMatchCard } from './PaymentMatchCard';
+export { Toast } from './Toast';
 
 // Verification Components
 export { VerificationStatusCard } from './VerificationStatusCard';

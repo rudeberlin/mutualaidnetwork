@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useAuthStore } from '../../store';
+import { Toast } from '../../components/Toast';
 import { RefreshCw } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -21,6 +22,7 @@ interface BannedAccount {
 export const AdminBannedAccounts: React.FC = () => {
   const [bannedAccounts, setBannedAccounts] = useState<BannedAccount[]>([]);
   const [loading, setLoading] = useState(true);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const { token } = useAuthStore();
 
   const fetchBannedAccounts = async () => {
@@ -51,9 +53,11 @@ export const AdminBannedAccounts: React.FC = () => {
         {},
         { headers: { Authorization: `Bearer ${token}` } }
       );
+      setToast({ message: `User ${userName} has been unbanned`, type: 'success' });
       fetchBannedAccounts();
-    } catch (error) {
-      console.error('Failed to unban user:', error);
+    } catch (error: any) {
+      const errorMsg = error.response?.data?.error || 'Failed to unban user';
+      setToast({ message: errorMsg, type: 'error' });
     }
   };
 
@@ -63,6 +67,14 @@ export const AdminBannedAccounts: React.FC = () => {
 
   return (
     <div className="space-y-4">
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
+
       <div className="flex items-center justify-between">
         <div>
           <p className="text-emerald-300 text-sm">Account suspensions</p>

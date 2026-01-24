@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useAuthStore } from '../../store';
+import { Toast } from '../../components/Toast';
 import { CheckCircle, XCircle, RotateCcw, Calendar } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -27,6 +28,7 @@ export const AdminUserPackages: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [selectedPackage, setSelectedPackage] = useState<UserPackage | null>(null);
   const [newMaturityDate, setNewMaturityDate] = useState('');
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const { token } = useAuthStore();
 
   const fetchPackages = async () => {
@@ -58,9 +60,11 @@ export const AdminUserPackages: React.FC = () => {
         { maturityDate: maturity.toISOString() },
         { headers: { Authorization: `Bearer ${token}` } }
       );
+      setToast({ message: `Package approved for ${packages.find(p => p.id === id)?.full_name}`, type: 'success' });
       fetchPackages();
-    } catch (error) {
-      console.error('Failed to approve package:', error);
+    } catch (error: any) {
+      const errorMsg = error.response?.data?.error || 'Failed to approve package';
+      setToast({ message: errorMsg, type: 'error' });
     }
   };
 
@@ -71,9 +75,11 @@ export const AdminUserPackages: React.FC = () => {
         {},
         { headers: { Authorization: `Bearer ${token}` } }
       );
+      setToast({ message: `Package rejected`, type: 'success' });
       fetchPackages();
-    } catch (error) {
-      console.error('Failed to reject package:', error);
+    } catch (error: any) {
+      const errorMsg = error.response?.data?.error || 'Failed to reject package';
+      setToast({ message: errorMsg, type: 'error' });
     }
   };
 
@@ -86,11 +92,13 @@ export const AdminUserPackages: React.FC = () => {
         { newMaturityDate },
         { headers: { Authorization: `Bearer ${token}` } }
       );
+      setToast({ message: `Package extended successfully`, type: 'success' });
       setSelectedPackage(null);
       setNewMaturityDate('');
       fetchPackages();
-    } catch (error) {
-      console.error('Failed to extend package:', error);
+    } catch (error: any) {
+      const errorMsg = error.response?.data?.error || 'Failed to extend package';
+      setToast({ message: errorMsg, type: 'error' });
     }
   };
 
@@ -101,9 +109,11 @@ export const AdminUserPackages: React.FC = () => {
         {},
         { headers: { Authorization: `Bearer ${token}` } }
       );
+      setToast({ message: `Package reset to pending`, type: 'success' });
       fetchPackages();
-    } catch (error) {
-      console.error('Failed to reset package:', error);
+    } catch (error: any) {
+      const errorMsg = error.response?.data?.error || 'Failed to reset package';
+      setToast({ message: errorMsg, type: 'error' });
     }
   };
 
@@ -113,6 +123,14 @@ export const AdminUserPackages: React.FC = () => {
 
   return (
     <div className="space-y-4">
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
+
       <div className="flex items-center justify-between">
         <div>
           <p className="text-emerald-300 text-sm">Package subscriptions</p>

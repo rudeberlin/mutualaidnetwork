@@ -17,16 +17,30 @@ export const UserDashboard: React.FC = () => {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showPackageSelection, setShowPackageSelection] = useState(false);
   const [showCurrentPackageModal, setShowCurrentPackageModal] = useState(false);
-  const [selectedOfferPackage, setSelectedOfferPackage] = useState<Package | null>(null);
-  const [selectedReceivePackage, setSelectedReceivePackage] = useState<Package | null>(null);
-  const [offerHelpStatus, setOfferHelpStatus] = useState<'processing' | 'pending' | 'matched' | null>(null);
-  const [receiveHelpStatus, setReceiveHelpStatus] = useState<'processing' | 'pending' | 'matched' | null>(null);
+  const [selectedOfferPackage, setSelectedOfferPackage] = useState<Package | null>(() => {
+    const saved = localStorage.getItem('selectedOfferPackage');
+    return saved ? JSON.parse(saved) : null;
+  });
+  const [selectedReceivePackage, setSelectedReceivePackage] = useState<Package | null>(() => {
+    const saved = localStorage.getItem('selectedReceivePackage');
+    return saved ? JSON.parse(saved) : null;
+  });
+  const [offerHelpStatus, setOfferHelpStatus] = useState<'processing' | 'pending' | 'matched' | null>(() => {
+    return localStorage.getItem('offerHelpStatus') as any || null;
+  });
+  const [receiveHelpStatus, setReceiveHelpStatus] = useState<'processing' | 'pending' | 'matched' | null>(() => {
+    return localStorage.getItem('receiveHelpStatus') as any || null;
+  });
   const [transactionIndex, setTransactionIndex] = useState(0);
-  const [timeRemaining, setTimeRemaining] = useState(0);
+  const [timeRemaining, setTimeRemaining] = useState(() => {
+    const saved = localStorage.getItem('timeRemaining');
+    return saved ? parseInt(saved) : 0;
+  });
   const [referralCodes, setReferralCodes] = useState<{ code: string; createdAt: string; uses: number }[]>(
     JSON.parse(localStorage.getItem('referralCodes') || '[]')
   );
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
+  const [paymentMatch, setPaymentMatch] = useState<any>(null);
   const transactionContainerRef = useRef<HTMLDivElement>(null);
   const { user, token, initializeFromStorage } = useAuthStore();
   const currentUser = user || MOCK_CURRENT_USER;
@@ -34,6 +48,90 @@ export const UserDashboard: React.FC = () => {
   useEffect(() => {
     initializeFromStorage();
   }, [initializeFromStorage]);
+  
+  // Persist help request state to localStorage
+  useEffect(() => {
+    if (selectedOfferPackage) {
+      localStorage.setItem('selectedOfferPackage', JSON.stringify(selectedOfferPackage));
+    } else {
+      localStorage.removeItem('selectedOfferPackage');
+    }
+  }, [selectedOfferPackage]);
+
+  useEffect(() => {
+    if (selectedReceivePackage) {
+      localStorage.setItem('selectedReceivePackage', JSON.stringify(selectedReceivePackage));
+    } else {
+      localStorage.removeItem('selectedReceivePackage');
+    }
+  }, [selectedReceivePackage]);
+
+  useEffect(() => {
+    if (offerHelpStatus) {
+      localStorage.setItem('offerHelpStatus', offerHelpStatus);
+    } else {
+      localStorage.removeItem('offerHelpStatus');
+    }
+  }, [offerHelpStatus]);
+
+  useEffect(() => {
+    if (receiveHelpStatus) {
+      localStorage.setItem('receiveHelpStatus', receiveHelpStatus);
+    } else {
+      localStorage.removeItem('receiveHelpStatus');
+    }
+  }, [receiveHelpStatus]);
+
+  useEffect(() => {
+    localStorage.setItem('timeRemaining', timeRemaining.toString());
+  }, [timeRemaining]);
+
+  // Fetch payment match data
+  useEffect(() => {
+    const fetchPaymentMatch = async () => {
+      if (!user?.id || !token) return;
+      
+      try {
+        const response = await axios.get(`${API_URL}/api/user/${user.id}/payment-match`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        
+        if (response.data.success && response.data.data) {
+          const matchData = response.data.data;
+          // Transform API response to match our component structure
+          setPaymentMatch({
+            id: matchData.match.id,
+            amount: matchData.match.amount,
+            payment_deadline: matchData.match.payment_deadline,
+            status: matchData.match.status,
+            role: matchData.role,
+            matched_user_name: matchData.match.matched_user.full_name,
+            matched_user_phone: matchData.match.matched_user.phone_number,
+            bank_details: matchData.match.matched_user.account_number ? {
+              account_name: matchData.match.matched_user.account_name,
+              account_number: matchData.match.matched_user.account_number,
+              bank_name: matchData.match.matched_user.bank_name
+            } : null
+          });
+          // Update status to matched if we have a match
+          if (matchData.role === 'giver' && offerHelpStatus !== 'matched') {
+            setOfferHelpStatus('matched');
+          } else if (matchData.role === 'receiver' && receiveHelpStatus !== 'matched') {
+            setReceiveHelpStatus('matched');
+          }
+        } else {
+          setPaymentMatch(null);
+        }
+      } catch (error) {
+        console.error('Failed to fetch payment match:', error);
+        setPaymentMatch(null);
+      }
+    };
+
+    fetchPaymentMatch();
+    const interval = setInterval(fetchPaymentMatch, 10000); // Poll every 10 seconds
+    return () => clearInterval(interval);
+  }, [user?.id, token, offerHelpStatus, receiveHelpStatus]);
   
   // Dashboard stats from API
   const [dashboardStats, setDashboardStats] = useState({
@@ -141,10 +239,6 @@ export const UserDashboard: React.FC = () => {
         <SettingsModal 
           user={currentUser} 
           onClose={() => setShowSettings(false)}
-          onSave={(updates) => {
-            console.log('Settings saved:', updates);
-            setShowSettings(false);
-          }}
         />
       )}
 
@@ -351,15 +445,22 @@ export const UserDashboard: React.FC = () => {
             <div className="bg-gradient-to-br from-slate-800/40 to-slate-900/40 border border-slate-700/50 rounded-lg p-6 backdrop-blur-sm">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-bold text-white">Offering Help</h3>
-                <button
-                  onClick={() => {
-                    setOfferHelpStatus(null);
-                    setSelectedOfferPackage(null);
-                  }}
-                  className="text-slate-400 hover:text-white text-lg"
-                >
-                  ✕
-                </button>
+                {/* Only allow closing if not matched or in processing */}
+                {(offerHelpStatus === 'processing' || !paymentMatch) && (
+                  <button
+                    onClick={() => {
+                      if (confirm('Are you sure you want to cancel this help request?')) {
+                        setOfferHelpStatus(null);
+                        setSelectedOfferPackage(null);
+                        localStorage.removeItem('offerHelpStatus');
+                        localStorage.removeItem('selectedOfferPackage');
+                      }
+                    }}
+                    className="text-slate-400 hover:text-white text-lg"
+                  >
+                    ✕
+                  </button>
+                )}
               </div>
 
               {/* Package Info */}
@@ -395,15 +496,54 @@ export const UserDashboard: React.FC = () => {
                   </div>
                 </div>
               )}
-              {offerHelpStatus === 'matched' && (
+              {offerHelpStatus === 'matched' && paymentMatch && (
                 <div>
                   <div className="flex items-center gap-2 mb-3">
                     <div className="w-3 h-3 bg-emerald-500 rounded-full"></div>
                     <p className="text-white font-semibold">Matched!</p>
                   </div>
-                  <div className="bg-emerald-500/10 border border-emerald-500/30 rounded p-4">
-                    <p className="text-emerald-300 font-semibold mb-2">John Aidoo - Verified Helper</p>
-                    <p className="text-slate-400 text-sm">Check your messages to connect and arrange the help.</p>
+                  <div className="bg-emerald-500/10 border border-emerald-500/30 rounded p-4 space-y-3">
+                    <div>
+                      <p className="text-slate-400 text-xs mb-1">Receiver Details</p>
+                      <p className="text-emerald-300 font-semibold">{paymentMatch.matched_user_name}</p>
+                      <p className="text-slate-300 text-sm">{paymentMatch.matched_user_phone}</p>
+                    </div>
+                    {paymentMatch.bank_details && (
+                      <div className="bg-slate-900/50 rounded p-3">
+                        <p className="text-slate-400 text-xs mb-1">Receiver's Bank Details</p>
+                        <p className="text-white text-sm"><span className="text-slate-400">Account:</span> {paymentMatch.bank_details.account_number}</p>
+                        <p className="text-white text-sm"><span className="text-slate-400">Bank:</span> {paymentMatch.bank_details.bank_name}</p>
+                        <p className="text-white text-sm"><span className="text-slate-400">Name:</span> {paymentMatch.bank_details.account_name}</p>
+                      </div>
+                    )}
+                    <p className="text-emerald-400 font-bold text-lg">Amount: ${paymentMatch.amount}</p>
+                    <button
+                      onClick={async () => {
+                        if (confirm('Have you sent the payment to the receiver?')) {
+                          try {
+                            await axios.post(
+                              `${API_URL}/api/user/payment-confirm`,
+                              { matchId: paymentMatch.id },
+                              { headers: { Authorization: `Bearer ${token}` } }
+                            );
+                            alert('Payment confirmation sent! Admin will verify.');
+                          } catch (error) {
+                            alert('Failed to confirm payment. Please try again.');
+                          }
+                        }
+                      }}
+                      className="w-full px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white font-semibold rounded-lg transition"
+                    >
+                      I Have Sent the Payment
+                    </button>
+                  </div>
+                </div>
+              )}
+              {offerHelpStatus === 'matched' && !paymentMatch && (
+                <div>
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-3 h-3 bg-emerald-500 rounded-full animate-pulse"></div>
+                    <p className="text-white font-semibold">Loading match details...</p>
                   </div>
                 </div>
               )}
@@ -459,15 +599,54 @@ export const UserDashboard: React.FC = () => {
                   </div>
                 </div>
               )}
-              {receiveHelpStatus === 'matched' && (
+              {receiveHelpStatus === 'matched' && paymentMatch && (
                 <div>
                   <div className="flex items-center gap-2 mb-3">
                     <div className="w-3 h-3 bg-emerald-500 rounded-full"></div>
                     <p className="text-white font-semibold">Matched!</p>
                   </div>
-                  <div className="bg-emerald-500/10 border border-emerald-500/30 rounded p-4">
-                    <p className="text-emerald-300 font-semibold mb-2">Sarah Mensah - Verified Helper</p>
-                    <p className="text-slate-400 text-sm">Check your messages to connect and arrange the help.</p>
+                  <div className="bg-emerald-500/10 border border-emerald-500/30 rounded p-4 space-y-3">
+                    <div>
+                      <p className="text-slate-400 text-xs mb-1">Giver Details</p>
+                      <p className="text-emerald-300 font-semibold">{paymentMatch.matched_user_name}</p>
+                      <p className="text-slate-300 text-sm">{paymentMatch.matched_user_phone}</p>
+                    </div>
+                    {paymentMatch.bank_details && (
+                      <div className="bg-slate-900/50 rounded p-3">
+                        <p className="text-slate-400 text-xs mb-1">Giver's Bank Details</p>
+                        <p className="text-white text-sm"><span className="text-slate-400">Account:</span> {paymentMatch.bank_details.account_number}</p>
+                        <p className="text-white text-sm"><span className="text-slate-400">Bank:</span> {paymentMatch.bank_details.bank_name}</p>
+                        <p className="text-white text-sm"><span className="text-slate-400">Name:</span> {paymentMatch.bank_details.account_name}</p>
+                      </div>
+                    )}
+                    <p className="text-emerald-400 font-bold text-lg">Expected Amount: ${paymentMatch.amount}</p>
+                    <button
+                      onClick={async () => {
+                        if (confirm('Have you received the payment from the giver?')) {
+                          try {
+                            await axios.post(
+                              `${API_URL}/api/user/payment-confirm`,
+                              { matchId: paymentMatch.id },
+                              { headers: { Authorization: `Bearer ${token}` } }
+                            );
+                            alert('Payment confirmation sent! Admin will verify.');
+                          } catch (error) {
+                            alert('Failed to confirm payment. Please try again.');
+                          }
+                        }
+                      }}
+                      className="w-full px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white font-semibold rounded-lg transition"
+                    >
+                      I Have Received the Payment
+                    </button>
+                  </div>
+                </div>
+              )}
+              {receiveHelpStatus === 'matched' && !paymentMatch && (
+                <div>
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-3 h-3 bg-emerald-500 rounded-full animate-pulse"></div>
+                    <p className="text-white font-semibold">Loading match details...</p>
                   </div>
                 </div>
               )}
