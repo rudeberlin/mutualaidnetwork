@@ -1,5 +1,6 @@
 import pg from 'pg';
 import dotenv from 'dotenv';
+import bcryptjs from 'bcryptjs';
 
 dotenv.config();
 
@@ -117,6 +118,31 @@ export async function initializeDatabase() {
         ('pkg-4', 'Gold', 500, 50, 15, 'Premium package', true)
       ON CONFLICT (id) DO NOTHING
     `);
+
+    // Seed default admin user if not exists
+    const adminEmail = process.env.ADMIN_EMAIL || 'admin@mutualaidnetwork.com';
+    const adminPassword = process.env.ADMIN_PASSWORD || 'Admin123!@#';
+    
+    const adminCheck = await client.query('SELECT id FROM users WHERE email = $1', [adminEmail]);
+    
+    if (adminCheck.rows.length === 0) {
+      const passwordHash = await bcryptjs.hash(adminPassword, 10);
+      await client.query(`
+        INSERT INTO users (
+          id, full_name, username, email, phone_number, country, 
+          my_referral_code, password_hash, role, is_verified, 
+          id_verified, payment_method_verified, total_earnings
+        )
+        VALUES (
+          'admin-001', 'System Admin', 'admin', $1, '+1234567890', 'USA',
+          'ADMIN001', $2, 'admin', true, true, true, 0
+        )
+      `, [adminEmail, passwordHash]);
+      
+      console.log('✅ Default admin user created');
+      console.log(`📧 Admin Email: ${adminEmail}`);
+      console.log(`🔑 Admin Password: ${adminPassword}`);
+    }
 
     console.log('✅ Database tables initialized successfully');
   } catch (error) {

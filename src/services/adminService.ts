@@ -1,3 +1,4 @@
+import axios from 'axios';
 import type {
   AdminVerification,
   AdminHelpActivity,
@@ -8,249 +9,188 @@ import type {
   User,
 } from '../types';
 
-// Mock data sources
-const mockUsers: User[] = [
-  {
-    id: 'u1',
-    fullName: 'Admin User',
-    username: 'admin',
-    email: 'admin@mutualaidnetwork.com',
-    phoneNumber: '+1-555-123-4567',
-    country: 'USA',
-    profilePhoto: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Admin',
-    role: 'admin',
-    idDocuments: {
-      frontImage: '/owner-profile-1.svg',
-      backImage: '/owner-profile-2.svg',
-      uploadedAt: new Date(),
-      verified: true,
-    },
-    isVerified: true,
-    paymentMethodVerified: true,
-    totalEarnings: 2500,
-    createdAt: new Date('2024-01-01'),
-    updatedAt: new Date('2024-12-01'),
-  },
-  {
-    id: 'u2',
-    fullName: 'Sarah Williams',
-    username: 'sarahw',
-    email: 'sarah@example.com',
-    phoneNumber: '+233-24-000-0000',
-    country: 'Ghana',
-    profilePhoto: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah',
-    role: 'member',
-    idDocuments: {
-      frontImage: '/owner-profile-2.svg',
-      backImage: '/owner-profile-3.svg',
-      uploadedAt: new Date('2024-02-10'),
-      verified: false,
-    },
-    isVerified: false,
-    paymentMethodVerified: false,
-    totalEarnings: 120,
-    createdAt: new Date('2024-02-01'),
-    updatedAt: new Date('2024-12-05'),
-  },
-  {
-    id: 'u3',
-    fullName: 'Michael Johnson',
-    username: 'mikej',
-    email: 'mike@example.com',
-    phoneNumber: '+44-20-000-0000',
-    country: 'UK',
-    profilePhoto: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Mike',
-    role: 'member',
-    idDocuments: {
-      frontImage: '/owner-profile-1.svg',
-      backImage: '/owner-profile-2.svg',
-      uploadedAt: new Date('2024-03-15'),
-      verified: true,
-    },
-    isVerified: true,
-    paymentMethodVerified: true,
-    totalEarnings: 640,
-    createdAt: new Date('2024-03-01'),
-    updatedAt: new Date('2024-12-02'),
-  },
-];
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
-const mockVerifications: AdminVerification[] = [
-  {
-    id: 'v1',
-    userId: 'u2',
-    fullName: 'Sarah Williams',
-    username: 'sarahw',
-    profilePhoto: mockUsers[1].profilePhoto,
-    idType: 'ID Card',
-    frontImage: '/owner-profile-2.svg',
-    backImage: '/owner-profile-3.svg',
-    status: 'Pending',
-    submittedAt: new Date('2024-12-10'),
-  },
-  {
-    id: 'v2',
-    userId: 'u3',
-    fullName: 'Michael Johnson',
-    username: 'mikej',
-    profilePhoto: mockUsers[2].profilePhoto,
-    idType: "Driver's License",
-    frontImage: '/owner-profile-1.svg',
-    backImage: '/owner-profile-2.svg',
-    status: 'Approved',
-    submittedAt: new Date('2024-10-02'),
-    reviewedAt: new Date('2024-10-05'),
-    reviewer: 'Admin User',
-  },
-];
+// Create axios instance with auth token
+const api = axios.create({
+  baseURL: API_URL,
+});
 
-const mockHelpActivities: AdminHelpActivity[] = [
-  {
-    id: 'ha1',
-    giverName: 'Sarah Williams',
-    receiverName: 'Michael Johnson',
-    packageName: 'Bronze',
-    amount: 100,
-    startDate: new Date('2024-12-01'),
-    dueDate: new Date('2024-12-15'),
-    status: 'Active',
-  },
-  {
-    id: 'ha2',
-    giverName: 'Michael Johnson',
-    receiverName: 'Tom Brown',
-    packageName: 'Silver',
-    amount: 250,
-    startDate: new Date('2024-11-01'),
-    dueDate: new Date('2024-11-20'),
-    status: 'Completed',
-  },
-];
-
-const mockPayments: AdminPayment[] = [
-  {
-    id: 'p1',
-    userName: 'Sarah Williams',
-    method: 'Mobile Money',
-    maskedDetails: 'MoMo ****1234',
-    amount: 120,
-    status: 'Pending',
-    submittedAt: new Date('2024-12-11'),
-  },
-  {
-    id: 'p2',
-    userName: 'Michael Johnson',
-    method: 'Bank',
-    maskedDetails: 'Bank ****6789',
-    amount: 250,
-    status: 'Confirmed',
-    submittedAt: new Date('2024-10-05'),
-  },
-];
-
-const mockTransactions: AdminTransaction[] = [
-  { id: 't1', userName: 'Sarah Williams', type: 'Help Given', amount: 100, status: 'Completed', date: new Date('2024-12-02') },
-  { id: 't2', userName: 'Michael Johnson', type: 'Help Received', amount: 250, status: 'Completed', date: new Date('2024-11-15') },
-  { id: 't3', userName: 'Tom Brown', type: 'Help Given', amount: 75, status: 'Pending', date: new Date('2024-12-12') },
-];
-
-const mockPackages: AdminPackage[] = [
-  { id: 'pkg1', name: 'Basic', amount: 25, returnPercentage: 30, durationDays: 3, active: true },
-  { id: 'pkg2', name: 'Bronze', amount: 100, returnPercentage: 30, durationDays: 5, active: true },
-  { id: 'pkg3', name: 'Silver', amount: 250, returnPercentage: 50, durationDays: 15, active: true },
-  { id: 'pkg4', name: 'Gold', amount: 500, returnPercentage: 50, durationDays: 15, active: true },
-  { id: 'pkg5', name: 'Premium Plus', amount: 750, returnPercentage: 60, durationDays: 20, active: false },
-];
-
-const mockReports = {
-  monthlyHelpVolume: [
-    { label: 'Sep', value: 4200 },
-    { label: 'Oct', value: 5400 },
-    { label: 'Nov', value: 6100 },
-    { label: 'Dec', value: 7200 },
-  ] satisfies AdminReportPoint[],
-  userGrowth: [
-    { label: 'Sep', value: 180 },
-    { label: 'Oct', value: 240 },
-    { label: 'Nov', value: 320 },
-    { label: 'Dec', value: 410 },
-  ] satisfies AdminReportPoint[],
-  helpStatus: [
-    { label: 'Completed', value: 68 },
-    { label: 'Pending', value: 22 },
-    { label: 'Active', value: 10 },
-  ] satisfies AdminReportPoint[],
-};
-
-const delay = (ms = 300) => new Promise((res) => setTimeout(res, ms));
+// Add token to requests
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
 
 export const adminService = {
-  async fetchUsers() {
-    await delay();
-    return [...mockUsers];
+  async fetchUsers(): Promise<User[]> {
+    const response = await api.get('/api/admin/users');
+    return response.data.data || [];
   },
-  async suspendUser(userId: string) {
-    await delay();
-    return userId;
+
+  async fetchVerifications(): Promise<AdminVerification[]> {
+    const response = await api.get('/api/admin/verifications');
+    const verifications = response.data.data || [];
+    
+    // Transform backend data to match frontend format
+    return verifications.map((v: any) => ({
+      id: v.id,
+      userId: v.id,
+      fullName: v.user_name,
+      username: v.email.split('@')[0],
+      profilePhoto: `https://api.dicebear.com/7.x/avataaars/svg?seed=${v.user_name}`,
+      idType: 'ID Card',
+      frontImage: v.id_front_image,
+      backImage: v.id_back_image,
+      status: 'Pending',
+      submittedAt: new Date(v.submitted_at),
+    }));
   },
-  async reactivateUser(userId: string) {
-    await delay();
-    return userId;
-  },
-  async fetchVerifications() {
-    await delay();
-    return [...mockVerifications];
-  },
+
   async approveVerification(id: string, reviewer: string) {
-    await delay();
+    await api.post(`/api/admin/verify-user/${id}`, { reviewer });
     return { id, reviewer };
   },
+
   async rejectVerification(id: string, reason: string, reviewer: string) {
-    await delay();
+    // Backend doesn't have reject endpoint yet, so just return
     return { id, reason, reviewer };
   },
-  async fetchHelpActivities() {
-    await delay();
-    return [...mockHelpActivities];
+
+  async fetchHelpActivities(): Promise<AdminHelpActivity[]> {
+    const response = await api.get('/api/admin/help-activities');
+    const activities = response.data.data || [];
+    
+    return activities.map((a: any) => ({
+      id: a.id,
+      giverName: 'User ' + a.giver_id?.substring(0, 8),
+      receiverName: a.receiver_id ? 'User ' + a.receiver_id.substring(0, 8) : 'N/A',
+      packageName: a.package_id,
+      amount: parseFloat(a.amount),
+      startDate: new Date(a.created_at),
+      dueDate: new Date(a.created_at),
+      status: a.status.charAt(0).toUpperCase() + a.status.slice(1),
+    }));
   },
+
   async completeHelpActivity(id: string) {
-    await delay();
+    // Backend endpoint to be created
     return id;
   },
+
   async resolveDispute(id: string) {
-    await delay();
+    // Backend endpoint to be created
     return id;
   },
-  async fetchPayments() {
-    await delay();
-    return [...mockPayments];
+
+  async fetchPayments(): Promise<AdminPayment[]> {
+    const response = await api.get('/api/admin/payments');
+    const payments = response.data.data || [];
+    
+    return payments.map((p: any) => ({
+      id: p.id,
+      userName: 'User ' + p.user_id?.substring(0, 8),
+      method: p.type || 'Unknown',
+      maskedDetails: '****' + p.id.toString().slice(-4),
+      amount: 0,
+      status: p.verified ? 'Confirmed' : 'Pending',
+      submittedAt: new Date(p.added_at),
+    }));
   },
+
   async verifyPayment(id: string) {
-    await delay();
+    // Backend endpoint to be created
     return id;
   },
+
   async flagPayment(id: string) {
-    await delay();
+    // Backend endpoint to be created
     return id;
   },
-  async fetchTransactions() {
-    await delay();
-    return [...mockTransactions];
+
+  async fetchTransactions(): Promise<AdminTransaction[]> {
+    const response = await api.get('/api/admin/transactions');
+    const transactions = response.data.data || [];
+    
+    return transactions.map((t: any) => ({
+      id: t.id,
+      userName: 'User ' + t.user_id?.substring(0, 8),
+      type: t.type,
+      amount: parseFloat(t.amount),
+      currency: t.currency || 'USD',
+      status: t.status.charAt(0).toUpperCase() + t.status.slice(1),
+      date: new Date(t.created_at),
+    }));
   },
-  async fetchPackages() {
-    await delay();
-    return [...mockPackages];
+
+  async fetchPackages(): Promise<AdminPackage[]> {
+    const response = await api.get('/api/packages');
+    const packages = response.data.data || [];
+    
+    return packages.map((p: any) => ({
+      id: p.id,
+      name: p.name,
+      amount: parseFloat(p.amount),
+      returnPercentage: p.return_percentage,
+      durationDays: p.duration_days,
+      description: p.description,
+      active: p.active,
+    }));
   },
+
   async updatePackage(updated: AdminPackage) {
-    await delay();
+    await api.put(`/api/admin/packages/${updated.id}`, {
+      name: updated.name,
+      amount: updated.amount,
+      return_percentage: updated.returnPercentage,
+      duration_days: updated.durationDays,
+      active: updated.active,
+    });
     return updated;
   },
+
   async togglePackage(id: string, active: boolean) {
-    await delay();
+    await api.put(`/api/admin/packages/${id}`, { active });
     return { id, active };
   },
+
+  async suspendUser(userId: string) {
+    // Backend endpoint to be created
+    return userId;
+  },
+
+  async reactivateUser(userId: string) {
+    // Backend endpoint to be created
+    return userId;
+  },
+
   async fetchReports() {
-    await delay();
-    return { ...mockReports };
+    // Mock reports for now - can be enhanced with real backend data
+    return {
+      monthlyHelpVolume: [
+        { label: 'Jan', value: 4200 },
+        { label: 'Feb', value: 5600 },
+        { label: 'Mar', value: 7100 },
+        { label: 'Apr', value: 6800 },
+        { label: 'May', value: 8200 },
+        { label: 'Jun', value: 9400 },
+      ] as AdminReportPoint[],
+      userGrowth: [
+        { label: 'Jan', value: 120 },
+        { label: 'Feb', value: 180 },
+        { label: 'Mar', value: 250 },
+        { label: 'Apr', value: 340 },
+        { label: 'May', value: 480 },
+        { label: 'Jun', value: 620 },
+      ] as AdminReportPoint[],
+      helpStatus: [
+        { label: 'Active', value: 45 },
+        { label: 'Completed', value: 120 },
+        { label: 'Disputed', value: 5 },
+      ] as AdminReportPoint[],
+    };
   },
 };
