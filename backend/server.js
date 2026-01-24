@@ -14,6 +14,7 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+const API_URL = process.env.CLIENT_URL || `http://localhost:${PORT}`;
 
 // Get current directory
 const __filename = fileURLToPath(import.meta.url);
@@ -179,6 +180,12 @@ app.post('/api/register', upload.fields([{ name: 'idFront' }, { name: 'idBack' }
     const userId = `user-${Date.now()}`;
     const profilePhoto = `https://api.dicebear.com/7.x/avataaars/svg?seed=${username}`;
 
+    // Store file paths - accessible via /uploads endpoint
+    const idFrontPath = req.files?.idFront ? `/uploads/${req.files.idFront[0].filename}` : null;
+    const idBackPath = req.files?.idBack ? `/uploads/${req.files.idBack[0].filename}` : null;
+
+    console.log('ID Upload - Front:', idFrontPath, 'Back:', idBackPath);
+
     const result = await pool.query(`
       INSERT INTO users (
         id, full_name, username, email, phone_number, country, referral_code, 
@@ -190,8 +197,8 @@ app.post('/api/register', upload.fields([{ name: 'idFront' }, { name: 'idBack' }
     `, [
       userId, fullName, username, email, phoneNumber, country, referralCode || null,
       userReferralCode, hashedPassword, profilePhoto, 'member',
-      req.files?.idFront ? `/uploads/${req.files.idFront[0].filename}` : null,
-      req.files?.idBack ? `/uploads/${req.files.idBack[0].filename}` : null,
+      idFrontPath,
+      idBackPath,
       false, false, false, 0
     ]);
 
@@ -211,10 +218,10 @@ app.post('/api/register', upload.fields([{ name: 'idFront' }, { name: 'idBack' }
       profilePhoto: newUser.profile_photo,
       role: newUser.role,
       idDocuments: {
-        frontImage: newUser.id_front_image || '',
-        backImage: newUser.id_back_image || '',
+        frontImage: idFrontPath ? `${API_URL}${idFrontPath}` : '',
+        backImage: idBackPath ? `${API_URL}${idBackPath}` : '',
         uploadedAt: newUser.created_at,
-        verified: newUser.id_verified || false
+        verified: false
       },
       isVerified: newUser.is_verified,
       paymentMethodVerified: newUser.payment_method_verified,

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Navbar } from '../components/Navbar';
 import { BarChart3, Users, DollarSign, TrendingUp, LogOut, Menu, X, AlertCircle } from 'lucide-react';
-import { useUIStore } from '../store';
+import { useUIStore, useAuthStore } from '../store';
 import { useAdminStore } from '../store/adminStore';
 import { MOCK_TRANSACTIONS } from '../utils/mockData';
 import { formatCurrency, formatDate } from '../utils/helpers';
@@ -13,16 +13,23 @@ export const AdminPanel: React.FC = () => {
   const [activeView, setActiveView] = useState<AdminView>('dashboard');
   const { isSidebarOpen, closeSidebar } = useUIStore();
   const { loading, error, users, initData } = useAdminStore();
+  const { token, initializeFromStorage } = useAuthStore();
   const navigate = useNavigate();
 
   useEffect(() => {
-    initData();
-    // Refresh data every 10 seconds to show new registrations
-    const interval = setInterval(() => {
+    initializeFromStorage();
+  }, [initializeFromStorage]);
+
+  useEffect(() => {
+    if (token) {
       initData();
-    }, 10000);
-    return () => clearInterval(interval);
-  }, [initData]);
+      // Refresh data every 5 seconds to show new registrations
+      const interval = setInterval(() => {
+        initData();
+      }, 5000);
+      return () => clearInterval(interval);
+    }
+  }, [initData, token]);
 
   const handleLogout = () => {
     navigate('/');

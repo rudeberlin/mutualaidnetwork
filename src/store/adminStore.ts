@@ -57,17 +57,19 @@ export const useAdminStore = create<AdminState>((set, get) => ({
     set({ loading: true, error: undefined });
     try {
       const [users, verifications, helpActivities, payments, transactions, packages, reports] = await Promise.all([
-        adminService.fetchUsers(),
-        adminService.fetchVerifications(),
-        adminService.fetchHelpActivities(),
-        adminService.fetchPayments(),
-        adminService.fetchTransactions(),
-        adminService.fetchPackages(),
-        adminService.fetchReports(),
+        adminService.fetchUsers().catch(e => { console.error('Error fetching users:', e); return []; }),
+        adminService.fetchVerifications().catch(e => { console.error('Error fetching verifications:', e); return []; }),
+        adminService.fetchHelpActivities().catch(e => { console.error('Error fetching help activities:', e); return []; }),
+        adminService.fetchPayments().catch(e => { console.error('Error fetching payments:', e); return []; }),
+        adminService.fetchTransactions().catch(e => { console.error('Error fetching transactions:', e); return []; }),
+        adminService.fetchPackages().catch(e => { console.error('Error fetching packages:', e); return []; }),
+        adminService.fetchReports().catch(e => { console.error('Error fetching reports:', e); return { monthlyHelpVolume: [], userGrowth: [], helpStatus: [] }; }),
       ]);
+      console.log('Admin data loaded:', { users: users.length, verifications: verifications.length });
       set({ users, verifications, helpActivities, payments, transactions, packages, reports, loading: false });
-    } catch {
-      set({ error: 'Failed to load admin data', loading: false });
+    } catch (err) {
+      console.error('Admin data load error:', err);
+      set({ error: 'Failed to load admin data. Check console for details.', loading: false });
     }
   },
 

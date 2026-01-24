@@ -27,8 +27,12 @@ export const UserDashboard: React.FC = () => {
   );
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const transactionContainerRef = useRef<HTMLDivElement>(null);
-  const { user, token } = useAuthStore();
+  const { user, token, initializeFromStorage } = useAuthStore();
   const currentUser = user || MOCK_CURRENT_USER;
+  
+  useEffect(() => {
+    initializeFromStorage();
+  }, [initializeFromStorage]);
   
   // Dashboard stats from API
   const [dashboardStats, setDashboardStats] = useState({

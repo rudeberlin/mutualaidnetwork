@@ -6,7 +6,7 @@ import type {
   MatchedMember
 } from '../types';
 
-// Auth Store
+// Auth Store with localStorage persistence
 interface AuthStore {
   user: User | null;
   token: string | null;
@@ -15,19 +15,39 @@ interface AuthStore {
   setToken: (token: string) => void;
   updateUser: (updates: Partial<User>) => void;
   logout: () => void;
+  initializeFromStorage: () => void;
 }
 
 export const useAuthStore = create<AuthStore>((set) => ({
-  user: null,
-  token: null,
-  isAuthenticated: false,
-  setUser: (user) => set({ user, isAuthenticated: true }),
-  setToken: (token) => set({ token }),
+  user: localStorage.getItem('user') ? JSON.parse(localStorage.getItem('user') || 'null') : null,
+  token: localStorage.getItem('token') || null,
+  isAuthenticated: !!localStorage.getItem('token'),
+  setUser: (user) => {
+    localStorage.setItem('user', JSON.stringify(user));
+    set({ user, isAuthenticated: true });
+  },
+  setToken: (token) => {
+    localStorage.setItem('token', token);
+    set({ token });
+  },
   updateUser: (updates) =>
-    set((state) => ({
-      user: state.user ? { ...state.user, ...updates } : null,
-    })),
-  logout: () => set({ user: null, token: null, isAuthenticated: false }),
+    set((state) => {
+      const updated = state.user ? { ...state.user, ...updates } : null;
+      if (updated) localStorage.setItem('user', JSON.stringify(updated));
+      return { user: updated };
+    }),
+  logout: () => {
+    localStorage.removeItem('user');
+    localStorage.removeItem('token');
+    set({ user: null, token: null, isAuthenticated: false });
+  },
+  initializeFromStorage: () => {
+    const user = localStorage.getItem('user');
+    const token = localStorage.getItem('token');
+    if (user && token) {
+      set({ user: JSON.parse(user), token, isAuthenticated: true });
+    }
+  },
 }));
 
 // Transaction Store
