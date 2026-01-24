@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import axios from 'axios';
 import { Navbar } from '../components/Navbar';
 import { SettingsModal } from '../components/SettingsModal';
 import { PaymentMethodModal } from '../components/PaymentMethodModal';
@@ -7,6 +8,8 @@ import { PACKAGES, MOCK_CURRENT_USER, MOCK_TRANSACTIONS } from '../utils/mockDat
 import { useAuthStore } from '../store';
 import type { Package } from '../types';
 import { Settings, CreditCard, ArrowUpRight, ArrowDownLeft, TrendingUp, Plus, Hand, X, Check, Clock, Copy, Share2 } from 'lucide-react';
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 export const UserDashboard: React.FC = () => {
   const [showSettings, setShowSettings] = useState(false);
@@ -24,8 +27,42 @@ export const UserDashboard: React.FC = () => {
   );
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const transactionContainerRef = useRef<HTMLDivElement>(null);
-  const { user } = useAuthStore();
+  const { user, token } = useAuthStore();
   const currentUser = user || MOCK_CURRENT_USER;
+  
+  // Dashboard stats from API
+  const [dashboardStats, setDashboardStats] = useState({
+    totalEarnings: 0,
+    activePackagesCount: 0,
+    helpProvidedCount: 0,
+    daysSinceRegistration: 0,
+    registrationDate: null as Date | null,
+    activePackages: [] as any[]
+  });
+  const [loadingStats, setLoadingStats] = useState(true);
+
+  // Fetch dashboard stats
+  useEffect(() => {
+    const fetchDashboardStats = async () => {
+      if (!user?.id || !token) return;
+      
+      try {
+        const response = await axios.get(`${API_URL}/api/user/${user.id}/stats`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        
+        if (response.data.success) {
+          setDashboardStats(response.data.data);
+        }
+      } catch (error) {
+        console.error('Failed to fetch dashboard stats:', error);
+      } finally {
+        setLoadingStats(false);
+      }
+    };
+
+    fetchDashboardStats();
+  }, [user?.id, token]);
 
   // Auto-scroll transactions - vertical sliding
   useEffect(() => {
@@ -246,7 +283,9 @@ export const UserDashboard: React.FC = () => {
               <p className="text-slate-400 text-sm font-semibold">Total Earnings</p>
               <TrendingUp className="text-emerald-500" size={20} />
             </div>
-            <p className="text-3xl font-bold text-white">${currentUser.totalEarnings.toFixed(2)}</p>
+            <p className="text-3xl font-bold text-white">
+              ${loadingStats ? '...' : dashboardStats.totalEarnings.toFixed(2)}
+            </p>
             <p className="text-emerald-400 text-sm mt-2">+12% this month</p>
           </div>
 
@@ -255,8 +294,12 @@ export const UserDashboard: React.FC = () => {
               <p className="text-slate-400 text-sm font-semibold">Active Packages</p>
               <TrendingUp className="text-teal-500" size={20} />
             </div>
-            <p className="text-3xl font-bold text-white">2</p>
-            <p className="text-teal-400 text-sm mt-2">Growing your network</p>
+            <p className="text-3xl font-bold text-white">
+              {loadingStats ? '...' : dashboardStats.activePackagesCount}
+            </p>
+            <p className="text-teal-400 text-sm mt-2">
+              {dashboardStats.activePackagesCount > 0 ? 'Growing your network' : 'Start a package'}
+            </p>
           </div>
 
           <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 border border-slate-700/50 rounded-lg p-6 backdrop-blur-sm hover:border-emerald-500/30 transition-all">
@@ -264,7 +307,9 @@ export const UserDashboard: React.FC = () => {
               <p className="text-slate-400 text-sm font-semibold">Help Provided</p>
               <ArrowUpRight className="text-blue-500" size={20} />
             </div>
-            <p className="text-3xl font-bold text-white">5</p>
+            <p className="text-3xl font-bold text-white">
+              {loadingStats ? '...' : dashboardStats.helpProvidedCount}
+            </p>
             <p className="text-blue-400 text-sm mt-2">Community impact</p>
           </div>
 
@@ -273,8 +318,14 @@ export const UserDashboard: React.FC = () => {
               <p className="text-slate-400 text-sm font-semibold">Member Since</p>
               <Plus className="text-purple-500" size={20} />
             </div>
-            <p className="text-3xl font-bold text-white">23</p>
-            <p className="text-purple-400 text-sm mt-2">days active</p>
+            <p className="text-3xl font-bold text-white">
+              {loadingStats ? '...' : dashboardStats.daysSinceRegistration}
+            </p>
+            <p className="text-purple-400 text-sm mt-2">
+              {dashboardStats.registrationDate 
+                ? new Date(dashboardStats.registrationDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                : 'days active'}
+            </p>
           </div>
         </div>
 

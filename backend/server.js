@@ -305,6 +305,75 @@ app.get('/api/user/:id', authenticateToken, async (req, res) => {
     res.json({
       success: true,
       data: result.rows[0],
+    // GET user dashboard stats
+    app.get('/api/user/:id/stats', authenticateToken, async (req, res) => {
+      try {
+        if (req.userId !== req.params.userId && req.userRole !== 'admin') {
+          return res.status(403).json({ success: false, error: 'Unauthorized' });
+        }
+
+        const userId = req.params.userId;
+
+        // Get user info including registration date
+        const userResult = await pool.query(
+          'SELECT created_at, total_earnings FROM users WHERE id = $1',
+          [userId]
+        );
+
+        if (userResult.rows.length === 0) {
+          return res.status(404).json({ success: false, error: 'User not found' });
+        }
+
+        const user = userResult.rows[0];
+    
+        // Calculate days since registration
+        const registrationDate = new Date(user.created_at);
+        const today = new Date();
+        const daysSinceRegistration = Math.floor((today - registrationDate) / (1000 * 60 * 60 * 24));
+
+        // Count active packages (help activities with 'pending' or 'active' status)
+        const activePackagesResult = await pool.query(
+          `SELECT COUNT(DISTINCT package_id) as count 
+           FROM help_activities 
+           WHERE giver_id = $1 AND status IN ('pending', 'active')`,
+          [userId]
+        );
+
+        // Count help provided (number of times user has given help)
+        const helpProvidedResult = await pool.query(
+          `SELECT COUNT(*) as count 
+           FROM help_activities 
+           WHERE giver_id = $1`,
+          [userId]
+        );
+
+        // Get active package details
+        const activePackagesDetailsResult = await pool.query(
+          `SELECT p.*, ha.created_at as subscribed_at, ha.status
+           FROM help_activities ha
+           JOIN packages p ON ha.package_id = p.id
+           WHERE ha.giver_id = $1 AND ha.status IN ('pending', 'active')
+           ORDER BY ha.created_at DESC`,
+          [userId]
+        );
+
+        res.json({
+          success: true,
+          data: {
+            totalEarnings: parseFloat(user.total_earnings || 0),
+            activePackagesCount: parseInt(activePackagesResult.rows[0].count || 0),
+            helpProvidedCount: parseInt(helpProvidedResult.rows[0].count || 0),
+            daysSinceRegistration: daysSinceRegistration,
+            registrationDate: registrationDate,
+            activePackages: activePackagesDetailsResult.rows
+          }
+        });
+      } catch (error) {
+        console.error('Dashboard stats error:', error);
+        res.status(500).json({ success: false, error: error.message });
+      }
+    });
+
     });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
