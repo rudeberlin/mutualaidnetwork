@@ -4,6 +4,7 @@ import { useAdminStore } from '../../store/adminStore';
 import { useAuthStore } from '../../store';
 import { ShieldCheck, Ban, RefreshCw, Eye, X, Trash2 } from 'lucide-react';
 import { Toast } from '../../components/Toast';
+import { IDImageDisplay } from '../../components/IDImageDisplay';
 import { format } from 'date-fns';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
@@ -230,19 +231,21 @@ export const AdminUsers: React.FC = () => {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <p className="text-slate-400 text-sm mb-2">Front Side</p>
-                    {viewingUser.idDocuments?.frontImage ? (
-                      <img src={viewingUser.idDocuments.frontImage} alt="ID Front" className="w-full rounded-lg border border-white/10" />
-                    ) : (
-                      <div className="w-full h-40 bg-slate-800 rounded-lg flex items-center justify-center text-slate-500">No image</div>
-                    )}
+                    <IDImageDisplay
+                      imagePath={viewingUser.idDocuments?.frontImage || null}
+                      alt="ID Front"
+                      userName={viewingUser.fullName}
+                      size="medium"
+                    />
                   </div>
                   <div>
                     <p className="text-slate-400 text-sm mb-2">Back Side</p>
-                    {viewingUser.idDocuments?.backImage ? (
-                      <img src={viewingUser.idDocuments.backImage} alt="ID Back" className="w-full rounded-lg border border-white/10" />
-                    ) : (
-                      <div className="w-full h-40 bg-slate-800 rounded-lg flex items-center justify-center text-slate-500">No image</div>
-                    )}
+                    <IDImageDisplay
+                      imagePath={viewingUser.idDocuments?.backImage || null}
+                      alt="ID Back"
+                      userName={viewingUser.fullName}
+                      size="medium"
+                    />
                   </div>
                 </div>
               </div>

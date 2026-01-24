@@ -213,20 +213,62 @@ export const UserDashboard: React.FC = () => {
     setShowPackageSelection(true);
   };
 
-  const handlePackageSelect = (pkg: Package, type: 'offer' | 'receive') => {
-    if (type === 'offer') {
-      setSelectedOfferPackage(pkg);
-      setOfferHelpStatus('processing');
-      setTimeRemaining(pkg.durationDays * 86400); // Convert days to seconds
-    } else {
-      setSelectedReceivePackage(pkg);
-      setReceiveHelpStatus('processing');
+  const handlePackageSelect = async (pkg: Package, type: 'offer' | 'receive') => {
+    try {
+      if (type === 'offer') {
+        // Register as giver on backend
+        if (!token) {
+          alert('You must be logged in');
+          return;
+        }
+        
+        const response = await axios.post(
+          `${API_URL}/api/help/register-offer`,
+          { packageId: pkg.id },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+
+        if (response.data.success) {
+          setSelectedOfferPackage(pkg);
+          setOfferHelpStatus('pending');
+          setTimeRemaining(pkg.durationDays * 86400);
+          setShowPackageSelection(false);
+        }
+      } else {
+        // Register as receiver on backend
+        if (!token) {
+          alert('You must be logged in');
+          return;
+        }
+
+        if (!offerHelpStatus) {
+          alert('You must offer help first before requesting help');
+          return;
+        }
+
+        const response = await axios.post(
+          `${API_URL}/api/help/register-receive`,
+          { packageId: pkg.id },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+
+        if (response.data.success) {
+          setSelectedReceivePackage(pkg);
+          setReceiveHelpStatus('pending');
+          setShowPackageSelection(false);
+        }
+      }
+    } catch (error: any) {
+      const errorMsg = error.response?.data?.error || 'Failed to register for help';
+      alert(errorMsg);
     }
-    setShowPackageSelection(false);
   };
 
   const handleReceiveHelp = () => {
-    if (!offerHelpStatus) return;
+    if (!offerHelpStatus) {
+      alert('You must offer help first');
+      return;
+    }
     setShowPackageSelection(true);
   };
 

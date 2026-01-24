@@ -534,7 +534,108 @@ app.post('/api/transactions', authenticateToken, async (req, res) => {
   }
 });
 
-// POST help request
+// Register user as offering help (giver)
+app.post('/api/help/register-offer', authenticateToken, async (req, res) => {
+  try {
+    const { packageId } = req.body;
+    const userId = req.userId;
+
+    if (!packageId) {
+      return res.status(400).json({ success: false, error: 'Package ID required' });
+    }
+
+    // Check package exists
+    const pkgResult = await pool.query('SELECT * FROM packages WHERE id = $1', [packageId]);
+    if (pkgResult.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Package not found' });
+    }
+    const pkg = pkgResult.rows[0];
+
+    // Check if user already has an active giver activity for this package
+    const existing = await pool.query(`
+      SELECT id FROM help_activities 
+      WHERE giver_id = $1 AND package_id = $2 AND status IN ('pending', 'matched', 'active')
+      LIMIT 1
+    `, [userId, packageId]);
+
+    if (existing.rows.length > 0) {
+      return res.status(400).json({ success: false, error: 'Already registered to offer this package' });
+    }
+
+    // Create help activity as giver
+    const result = await pool.query(`
+      INSERT INTO help_activities (giver_id, package_id, amount, status, created_at)
+      VALUES ($1, $2, $3, 'pending', CURRENT_TIMESTAMP)
+      RETURNING id, giver_id, package_id, amount, status, created_at
+    `, [userId, packageId, pkg.amount]);
+
+    res.status(201).json({
+      success: true,
+      message: 'Registered as help provider successfully',
+      data: result.rows[0],
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Register user as requesting help (receiver)
+app.post('/api/help/register-receive', authenticateToken, async (req, res) => {
+  try {
+    const { packageId } = req.body;
+    const userId = req.userId;
+
+    if (!packageId) {
+      return res.status(400).json({ success: false, error: 'Package ID required' });
+    }
+
+    // Check if user has registered to offer help first
+    const offerCheck = await pool.query(`
+      SELECT id FROM help_activities 
+      WHERE giver_id = $1 AND status IN ('pending', 'matched', 'active')
+      LIMIT 1
+    `, [userId]);
+
+    if (offerCheck.rows.length === 0) {
+      return res.status(400).json({ success: false, error: 'You must offer help first before requesting help' });
+    }
+
+    // Check package exists
+    const pkgResult = await pool.query('SELECT * FROM packages WHERE id = $1', [packageId]);
+    if (pkgResult.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Package not found' });
+    }
+    const pkg = pkgResult.rows[0];
+
+    // Check if user already has an active receiver activity
+    const existing = await pool.query(`
+      SELECT id FROM help_activities 
+      WHERE receiver_id = $1 AND status IN ('pending', 'matched', 'active')
+      LIMIT 1
+    `, [userId]);
+
+    if (existing.rows.length > 0) {
+      return res.status(400).json({ success: false, error: 'You already have an active help request' });
+    }
+
+    // Create help activity as receiver
+    const result = await pool.query(`
+      INSERT INTO help_activities (receiver_id, package_id, amount, status, created_at)
+      VALUES ($1, $2, $3, 'pending', CURRENT_TIMESTAMP)
+      RETURNING id, receiver_id, package_id, amount, status, created_at
+    `, [userId, packageId, pkg.amount]);
+
+    res.status(201).json({
+      success: true,
+      message: 'Help request registered successfully',
+      data: result.rows[0],
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// POST help request (keep for backward compatibility)
 app.post('/api/help/request', authenticateToken, async (req, res) => {
   try {
     const { giverId, receiverId, packageId, paymentMethod } = req.body;
@@ -940,15 +1041,14 @@ app.post('/api/admin/user-packages/:id/reset', authenticateToken, requireAdmin, 
 // Get users pending to receive help
 app.get('/api/admin/pending-receivers', authenticateToken, requireAdmin, async (req, res) => {
   try {
-    // Get help_activities where users are WAITING TO RECEIVE help
-    // These would be users without a matched giver yet
+    // Get users REQUESTING to receive help - these have receiver_id set, giver_id NULL, and no match yet
     const result = await pool.query(`
       SELECT DISTINCT ON (u.id) u.id, u.full_name, u.email, u.phone_number, 
              p.name as package_name, ha.amount, ha.created_at, ha.id as activity_id
       FROM help_activities ha
       JOIN users u ON ha.receiver_id = u.id
       JOIN packages p ON ha.package_id = p.id
-      WHERE ha.status = 'pending' AND ha.giver_id IS NULL
+      WHERE ha.status = 'pending' AND ha.receiver_id IS NOT NULL AND ha.giver_id IS NULL
       ORDER BY u.id, ha.created_at ASC
     `);
     res.json({ success: true, data: result.rows });
@@ -960,12 +1060,12 @@ app.get('/api/admin/pending-receivers', authenticateToken, requireAdmin, async (
 // Get users available to give help
 app.get('/api/admin/available-givers', authenticateToken, requireAdmin, async (req, res) => {
   try {
-    // Get users who offered to give help (created help_activity as givers) and haven't been matched yet
+    // Get users who OFFERED to give help (have giver_id set, no receiver matched yet)
     const result = await pool.query(`
       SELECT DISTINCT ON (u.id) u.id, u.full_name, u.email, u.phone_number, u.total_earnings
       FROM users u
       JOIN help_activities ha ON u.id = ha.giver_id
-      WHERE ha.status = 'pending' AND ha.receiver_id IS NULL
+      WHERE ha.status = 'pending' AND ha.giver_id IS NOT NULL AND ha.receiver_id IS NULL
       AND u.role = 'member'
       AND u.is_verified = true
       ORDER BY u.id, ha.created_at ASC
@@ -987,19 +1087,20 @@ app.post('/api/admin/create-match', authenticateToken, requireAdmin, async (req,
     
     // Create match record
     const matchResult = await pool.query(`
-      INSERT INTO payment_matches (giver_id, receiver_id, help_activity_id, amount, payment_deadline, matched_by, status)
-      VALUES ($1, $2, $3, $4, $5, $6, 'pending')
+      INSERT INTO payment_matches (giver_id, receiver_id, help_activity_id, amount, payment_deadline, matched_by, status, admin_approved)
+      VALUES ($1, $2, $3, $4, $5, $6, 'pending', true)
       RETURNING *
     `, [giverId, receiverId, helpActivityId, amount, paymentDeadline, req.userId]);
     
-    // Update help activity
+    // Update help activity - set both giver_id and receiver_id, mark as matched
     await pool.query(`
       UPDATE help_activities 
-      SET receiver_id = $1, status = 'matched', matched_at = CURRENT_TIMESTAMP, payment_deadline = $2
-      WHERE id = $3
-    `, [receiverId, paymentDeadline, helpActivityId]);
-    
-    res.json({ success: true, data: matchResult.rows[0] });
+      SET giver_id = $1, receiver_id = $2, status = 'matched', matched_at = CURRENT_TIMESTAMP, payment_deadline = $3, admin_approved = true
+      WHERE id = $4
+    `, [giverId, receiverId, paymentDeadline, helpActivityId]);
+
+    // Also ensure the matching giver activity and receiver activity are linked
+    res.json({ success: true, data: matchResult.rows[0], message: 'Match created and saved successfully' });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
