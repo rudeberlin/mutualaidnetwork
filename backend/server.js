@@ -438,11 +438,7 @@ app.post('/api/help/request', authenticateToken, async (req, res) => {
 
     res.status(201).json({
       success: true,
-      data: result.rows[0],
-    });
       message: 'Help request created successfully',
-    res.status(201).json({
-      success: true,
       data: result.rows[0],
     });
   } catch (error) {

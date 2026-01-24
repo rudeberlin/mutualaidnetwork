@@ -43,8 +43,8 @@ export const adminService = {
       username: v.email.split('@')[0],
       profilePhoto: `https://api.dicebear.com/7.x/avataaars/svg?seed=${v.user_name}`,
       idType: 'ID Card',
-      frontImage: v.id_front_image,
-      backImage: v.id_back_image,
+      frontImage: v.id_front_image?.startsWith('/') ? `${API_URL}${v.id_front_image}` : v.id_front_image,
+      backImage: v.id_back_image?.startsWith('/') ? `${API_URL}${v.id_back_image}` : v.id_back_image,
       status: 'Pending',
       submittedAt: new Date(v.submitted_at),
     }));
