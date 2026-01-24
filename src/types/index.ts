@@ -16,6 +16,7 @@ export interface User {
   phoneNumber: string;
   country: string;
   referralCode?: string;
+  myReferralCode?: string;
   profilePhoto?: string;
   role?: 'admin' | 'member';
   idDocuments: IDDocument;

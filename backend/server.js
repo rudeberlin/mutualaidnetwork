@@ -183,6 +183,7 @@ app.post('/api/register', upload.fields([{ name: 'idFront' }, { name: 'idBack' }
       phoneNumber: newUser.phone_number,
       country: newUser.country,
       referralCode: newUser.referral_code,
+      myReferralCode: newUser.my_referral_code,
       profilePhoto: newUser.profile_photo,
       role: newUser.role,
       idDocuments: {
@@ -245,6 +246,7 @@ app.post('/api/login', async (req, res) => {
       phoneNumber: user.phone_number,
       country: user.country,
       referralCode: user.referral_code,
+      myReferralCode: user.my_referral_code,
       profilePhoto: user.profile_photo,
       role: user.role,
       idDocuments: {
