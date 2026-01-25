@@ -475,18 +475,19 @@ app.get('/api/user/:userId/stats', authenticateToken, async (req, res) => {
           [userId]
         );
 
-        // Count help provided (number of times user has given help)
+        // Count help provided (number of times user has completed giving help)
         const helpProvidedResult = await pool.query(
           `SELECT COUNT(*) as count 
            FROM help_activities 
-           WHERE giver_id = $1 AND status IN ('active', 'completed')`,
+           WHERE giver_id = $1 AND status = 'completed'`,
           [userId]
         );
 
         // Get active package details (only matched and confirmed packages)
         const activePackagesDetailsResult = await pool.query(
           `SELECT p.id, p.name as package_name, p.amount, p.return_percentage, 
-                  p.duration_days, p.description, ha.created_at as subscribed_at, ha.status
+                  p.duration_days, p.description, ha.package_id, ha.created_at as subscribed_at, 
+                  ha.status, ha.id as activity_id
            FROM help_activities ha
            JOIN packages p ON ha.package_id = p.id
            WHERE ha.giver_id = $1 AND ha.status IN ('active', 'completed')

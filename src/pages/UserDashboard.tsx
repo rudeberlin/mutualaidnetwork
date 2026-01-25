@@ -146,22 +146,6 @@ export const UserDashboard: React.FC = () => {
   });
   const [loadingStats, setLoadingStats] = useState(true);
 
-  // Monitor active packages and clear frontend state when package becomes active
-  useEffect(() => {
-    if (dashboardStats.activePackages && dashboardStats.activePackages.length > 0 && selectedOfferPackage) {
-      // Check if the selected offer package is now in active packages
-      const isPackageActive = dashboardStats.activePackages.some(pkg => pkg.package_id === selectedOfferPackage.id);
-      
-      if (isPackageActive && offerHelpStatus !== null) {
-        // Package is now active, clear the temporary UI state
-        setOfferHelpStatus(null);
-        setPaymentMatch(null);
-        localStorage.removeItem('offerHelpStatus');
-        localStorage.removeItem('selectedOfferPackage');
-      }
-    }
-  }, [dashboardStats.activePackages, selectedOfferPackage, offerHelpStatus]);
-
   // Fetch dashboard stats
   useEffect(() => {
     const fetchDashboardStats = async () => {
@@ -423,13 +407,19 @@ export const UserDashboard: React.FC = () => {
           <div className="flex gap-3">
             <button
               onClick={handleOfferHelp}
-              disabled={!!offerHelpStatus || !!receiveHelpStatus}
+              disabled={!currentUser.isVerified || !!offerHelpStatus || dashboardStats.activePackagesCount > 0}
               className={`flex items-center gap-2 px-6 py-3 font-semibold rounded-lg transition-all shadow-lg ${
-                (offerHelpStatus || receiveHelpStatus)
+                (!currentUser.isVerified || !!offerHelpStatus || dashboardStats.activePackagesCount > 0)
                   ? 'bg-slate-400 text-gray-600 cursor-not-allowed opacity-50'
                   : 'bg-white text-slate-900 hover:bg-slate-100'
               }`}
-              title={(offerHelpStatus || receiveHelpStatus) ? 'You can only have one active package at a time' : ''}
+              title={
+                !currentUser.isVerified 
+                  ? 'Waiting for admin approval' 
+                  : (offerHelpStatus || dashboardStats.activePackagesCount > 0) 
+                  ? 'You can only have one active package at a time' 
+                  : ''
+              }
             >
               <Hand size={20} />
               Offer Help
@@ -885,29 +875,34 @@ export const UserDashboard: React.FC = () => {
               <div className="space-y-3">
                 {dashboardStats.activePackages && dashboardStats.activePackages.length > 0 ? (
                   dashboardStats.activePackages.map((pkg: any, idx: number) => {
-                    // Calculate hourly interest accrual (daily % / 24)
-                    const dailyReturnPercent = 0.5; // 0.5% per day
-                    const hourlyReturnPercent = dailyReturnPercent / 24;
-                    const hoursSinceStart = Math.floor((Date.now() - new Date(pkg.created_at).getTime()) / (1000 * 60 * 60));
-                    const accruedPercentage = Math.min(hourlyReturnPercent * hoursSinceStart, dailyReturnPercent);
+                    // Calculate progress based on package duration
+                    const packageDurationMs = pkg.duration_days * 24 * 60 * 60 * 1000;
+                    const startTime = new Date(pkg.subscribed_at).getTime();
+                    const currentTime = Date.now();
+                    const elapsedTime = currentTime - startTime;
+                    const progressPercentage = Math.min((elapsedTime / packageDurationMs) * 100, 100);
+                    
+                    // Calculate accrued return (linear growth to return_percentage over duration)
+                    const accruedReturnPercent = (progressPercentage / 100) * pkg.return_percentage;
+                    const accruedAmount = (pkg.amount * accruedReturnPercent) / 100;
                     
                     return (
                       <div key={idx} className="bg-slate-700/30 border border-slate-600/30 rounded-lg p-3">
                         <div className="flex items-center justify-between mb-2">
                           <div className="min-w-0 flex-1">
                             <p className="text-white font-semibold text-sm">{pkg.package_name}</p>
-                            <p className="text-slate-400 text-xs">₵{pkg.amount}</p>
+                            <p className="text-slate-400 text-xs">₵{pkg.amount.toLocaleString()}</p>
                           </div>
                           <div className="text-right ml-2">
-                            <p className="text-emerald-400 font-bold text-xs">{(hourlyReturnPercent * 100).toFixed(2)}%/hr</p>
-                            <p className="text-slate-400 text-xs">{(accruedPercentage * 100).toFixed(2)}% accrued</p>
+                            <p className="text-emerald-400 font-bold text-xs">+₵{accruedAmount.toFixed(2)}</p>
+                            <p className="text-slate-400 text-xs">{progressPercentage.toFixed(1)}% complete</p>
                           </div>
                         </div>
                         {/* Progress bar */}
                         <div className="w-full h-1.5 bg-slate-700/50 rounded-full overflow-hidden">
                           <div 
                             className="h-full bg-gradient-to-r from-emerald-500 to-teal-500 transition-all"
-                            style={{ width: `${Math.min(accruedPercentage * 100, 100)}%` }}
+                            style={{ width: `${progressPercentage}%` }}
                           ></div>
                         </div>
                       </div>
@@ -921,21 +916,21 @@ export const UserDashboard: React.FC = () => {
                 )}
               </div>
               
-              {/* Hourly interest breakdown */}
+              {/* Return information */}
               <div className="mt-4 pt-4 border-t border-slate-700/30">
-                <p className="text-slate-400 text-xs mb-2 font-semibold">Daily Interest Rate Breakdown</p>
+                <p className="text-slate-400 text-xs mb-2 font-semibold">Package Returns</p>
                 <div className="grid grid-cols-3 gap-2 text-center text-xs">
                   <div className="bg-slate-700/20 rounded p-2">
-                    <p className="text-slate-500">Per Hour</p>
-                    <p className="text-emerald-400 font-bold">~0.02%</p>
+                    <p className="text-slate-500">Duration</p>
+                    <p className="text-emerald-400 font-bold">{dashboardStats.activePackages[0]?.duration_days || 5} days</p>
                   </div>
                   <div className="bg-slate-700/20 rounded p-2">
-                    <p className="text-slate-500">Per Day</p>
-                    <p className="text-teal-400 font-bold">0.5%</p>
+                    <p className="text-slate-500">ROI</p>
+                    <p className="text-teal-400 font-bold">{dashboardStats.activePackages[0]?.return_percentage || 50}%</p>
                   </div>
                   <div className="bg-slate-700/20 rounded p-2">
-                    <p className="text-slate-500">Per Month</p>
-                    <p className="text-cyan-400 font-bold">~15%</p>
+                    <p className="text-slate-500">Status</p>
+                    <p className="text-cyan-400 font-bold">{dashboardStats.activePackages[0]?.status === 'active' ? 'Active' : 'Completed'}</p>
                   </div>
                 </div>
               </div>
