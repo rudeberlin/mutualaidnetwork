@@ -133,19 +133,26 @@ export const UserDashboard: React.FC = () => {
       if (response.data.success && response.data.data) {
         const matchData = response.data.data;
         // Transform API response to match our component structure
+        const matchedUser = matchData.match.matched_user;
+        const hasBankDetails = Boolean(
+          matchedUser.account_name || matchedUser.account_number || matchedUser.bank_name
+        );
+
         setPaymentMatch({
           id: matchData.match.id,
           amount: matchData.match.amount,
           payment_deadline: matchData.match.payment_deadline,
           status: matchData.match.status,
           role: matchData.role,
-          matched_user_name: matchData.match.matched_user.full_name,
-          matched_user_phone: matchData.match.matched_user.phone_number,
-          bank_details: matchData.match.matched_user.account_number ? {
-            account_name: matchData.match.matched_user.account_name,
-            account_number: matchData.match.matched_user.account_number,
-            bank_name: matchData.match.matched_user.bank_name
-          } : null
+          matched_user_name: matchedUser.full_name,
+          matched_user_phone: matchedUser.phone_number,
+          bank_details: hasBankDetails
+            ? {
+                account_name: matchedUser.account_name,
+                account_number: matchedUser.account_number,
+                bank_name: matchedUser.bank_name
+              }
+            : null
         });
 
         // If we have package info from the match and no selectedOfferPackage, set it
@@ -597,7 +604,7 @@ export const UserDashboard: React.FC = () => {
         {/* Active Help Requests - Persistent Status Display */}
         <div className="grid md:grid-cols-2 gap-6 mb-12">
           {/* Offer Help Status */}
-          {offerHelpStatus && selectedOfferPackage && (
+          {offerHelpStatus && (selectedOfferPackage || paymentMatch) && (
             <div className="bg-gradient-to-br from-slate-800/40 to-slate-900/40 border border-slate-700/50 rounded-lg p-6 backdrop-blur-sm">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-bold text-white">Offering Help</h3>
@@ -620,16 +627,29 @@ export const UserDashboard: React.FC = () => {
               </div>
 
               {/* Package Info */}
-              <div className="bg-slate-700/30 rounded p-4 mb-4">
-                <div className="flex items-start gap-3">
-                  <span className="text-2xl">{selectedOfferPackage.icon}</span>
-                  <div>
-                    <p className="text-white font-semibold">{selectedOfferPackage.name}</p>
-                    <p className="text-emerald-400 font-bold text-lg">₵{selectedOfferPackage.amount.toLocaleString()}</p>
-                    <p className="text-slate-400 text-xs">ROI: {selectedOfferPackage.returnPercentage}% • {selectedOfferPackage.durationDays} days</p>
+              {selectedOfferPackage ? (
+                <div className="bg-slate-700/30 rounded p-4 mb-4">
+                  <div className="flex items-start gap-3">
+                    <span className="text-2xl">{selectedOfferPackage.icon}</span>
+                    <div>
+                      <p className="text-white font-semibold">{selectedOfferPackage.name}</p>
+                      <p className="text-emerald-400 font-bold text-lg">₵{selectedOfferPackage.amount.toLocaleString()}</p>
+                      <p className="text-slate-400 text-xs">ROI: {selectedOfferPackage.returnPercentage}% • {selectedOfferPackage.durationDays} days</p>
+                    </div>
                   </div>
                 </div>
-              </div>
+              ) : (
+                <div className="bg-slate-700/30 rounded p-4 mb-4">
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-300 font-bold">₵</div>
+                    <div>
+                      <p className="text-white font-semibold">Matched Help Offer</p>
+                      <p className="text-emerald-400 font-bold text-lg">₵{paymentMatch?.amount?.toLocaleString() ?? '—'}</p>
+                      <p className="text-slate-400 text-xs">Awaiting package details</p>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {offerHelpStatus === 'processing' && (
                 <div>
