@@ -33,6 +33,7 @@ async function runMigration() {
     console.log('   - Added matched_with_email column');
     console.log('   - Added matched_with_phone column');
     console.log('   - Added payment_account column');
+    console.log('   - Added payment_deadline column');
     
     process.exit(0);
   } catch (error) {
