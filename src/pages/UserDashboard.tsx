@@ -35,6 +35,8 @@ interface ActivePackage {
   return_percentage: number;
   duration_days: number;
   subscribed_at: string;
+  maturity_date?: string;
+  time_remaining_seconds?: number;
   status: string;
 }
 
@@ -222,6 +224,9 @@ export const UserDashboard: React.FC = () => {
     };
 
     fetchDashboardStats();
+    // Poll stats every 30 seconds to update timer and counts
+    const interval = setInterval(fetchDashboardStats, 30000);
+    return () => clearInterval(interval);
   }, [user?.id, token]);
 
   // Monitor activePackagesCount and clear state only after a completed cycle (matched → completed)
@@ -983,6 +988,12 @@ export const UserDashboard: React.FC = () => {
                     const accruedReturnPercent = (progressPercentage / 100) * pkg.return_percentage;
                     const accruedAmount = (pkg.amount * accruedReturnPercent) / 100;
                     
+                    // Calculate maturity countdown
+                    const timeRemainingSeconds = pkg.time_remaining_seconds || 0;
+                    const days = Math.floor(timeRemainingSeconds / 86400);
+                    const hours = Math.floor((timeRemainingSeconds % 86400) / 3600);
+                    const minutes = Math.floor((timeRemainingSeconds % 3600) / 60);
+                    
                     return (
                       <div key={idx} className="bg-slate-700/30 border border-slate-600/30 rounded-lg p-3">
                         <div className="flex items-center justify-between mb-2">
@@ -1002,6 +1013,26 @@ export const UserDashboard: React.FC = () => {
                             style={{ width: `${progressPercentage}%` }}
                           ></div>
                         </div>
+                        {/* Maturity Timer */}
+                        {pkg.maturity_date && timeRemainingSeconds > 0 && (
+                          <div className="mt-2 pt-2 border-t border-slate-600/30">
+                            <p className="text-slate-400 text-xs mb-1">Time to Maturity</p>
+                            <div className="flex gap-2 text-center">
+                              <div className="flex-1 bg-slate-800/50 rounded px-2 py-1">
+                                <p className="text-emerald-400 font-bold text-sm">{days}</p>
+                                <p className="text-slate-500 text-[10px]">days</p>
+                              </div>
+                              <div className="flex-1 bg-slate-800/50 rounded px-2 py-1">
+                                <p className="text-emerald-400 font-bold text-sm">{hours}</p>
+                                <p className="text-slate-500 text-[10px]">hrs</p>
+                              </div>
+                              <div className="flex-1 bg-slate-800/50 rounded px-2 py-1">
+                                <p className="text-emerald-400 font-bold text-sm">{minutes}</p>
+                                <p className="text-slate-500 text-[10px]">min</p>
+                              </div>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     );
                   })

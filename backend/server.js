@@ -487,8 +487,10 @@ app.get('/api/user/:userId/stats', authenticateToken, async (req, res) => {
         const activePackagesDetailsResult = await pool.query(
           `SELECT p.id, p.name as package_name, p.amount, p.return_percentage, 
                   p.duration_days, p.description, ha.package_id, 
-                  COALESCE(ha.maturity_date, ha.created_at) as subscribed_at, 
-                  ha.status, ha.id as activity_id
+                  ha.created_at as subscribed_at,
+                  ha.maturity_date,
+                  ha.status, ha.id as activity_id,
+                  EXTRACT(EPOCH FROM (ha.maturity_date - CURRENT_TIMESTAMP)) as time_remaining_seconds
            FROM help_activities ha
            JOIN packages p ON ha.package_id = p.id
            WHERE ha.giver_id = $1 AND ha.status IN ('matched', 'active')
