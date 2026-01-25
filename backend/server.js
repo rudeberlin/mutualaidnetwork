@@ -1527,7 +1527,9 @@ app.listen(PORT, async () => {
       ADD COLUMN IF NOT EXISTS matched_with_email VARCHAR(255),
       ADD COLUMN IF NOT EXISTS matched_with_phone VARCHAR(50),
       ADD COLUMN IF NOT EXISTS payment_account TEXT,
-      ADD COLUMN IF NOT EXISTS payment_deadline TIMESTAMP;
+      ADD COLUMN IF NOT EXISTS payment_deadline TIMESTAMP,
+      ADD COLUMN IF NOT EXISTS matched_at TIMESTAMP,
+      ADD COLUMN IF NOT EXISTS admin_approved BOOLEAN DEFAULT FALSE;
     `);
     console.log('✅ Manual match columns verified');
   } catch (error) {
