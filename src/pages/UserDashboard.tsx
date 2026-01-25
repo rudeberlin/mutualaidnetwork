@@ -146,6 +146,22 @@ export const UserDashboard: React.FC = () => {
   });
   const [loadingStats, setLoadingStats] = useState(true);
 
+  // Monitor active packages and clear frontend state when package becomes active
+  useEffect(() => {
+    if (dashboardStats.activePackages && dashboardStats.activePackages.length > 0 && selectedOfferPackage) {
+      // Check if the selected offer package is now in active packages
+      const isPackageActive = dashboardStats.activePackages.some(pkg => pkg.package_id === selectedOfferPackage.id);
+      
+      if (isPackageActive && offerHelpStatus !== null) {
+        // Package is now active, clear the temporary UI state
+        setOfferHelpStatus(null);
+        setPaymentMatch(null);
+        localStorage.removeItem('offerHelpStatus');
+        localStorage.removeItem('selectedOfferPackage');
+      }
+    }
+  }, [dashboardStats.activePackages, selectedOfferPackage, offerHelpStatus]);
+
   // Fetch dashboard stats
   useEffect(() => {
     const fetchDashboardStats = async () => {
