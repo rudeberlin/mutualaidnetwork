@@ -169,6 +169,19 @@ export const UserDashboard: React.FC = () => {
     fetchDashboardStats();
   }, [user?.id, token]);
 
+  // Monitor activePackagesCount and clear states when no active packages
+  useEffect(() => {
+    // If user has no active packages and offerHelpStatus is set, clear it
+    if (dashboardStats.activePackagesCount === 0 && offerHelpStatus !== null) {
+      console.log('No active packages detected, clearing offer help status');
+      setOfferHelpStatus(null);
+      setSelectedOfferPackage(null);
+      setPaymentMatch(null);
+      localStorage.removeItem('offerHelpStatus');
+      localStorage.removeItem('selectedOfferPackage');
+    }
+  }, [dashboardStats.activePackagesCount, offerHelpStatus]);
+
   // Auto-scroll transactions - vertical sliding
   useEffect(() => {
     const interval = setInterval(() => {

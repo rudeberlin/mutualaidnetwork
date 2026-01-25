@@ -466,12 +466,12 @@ app.get('/api/user/:userId/stats', authenticateToken, async (req, res) => {
     const today = new Date();
     const daysSinceRegistration = Math.floor((today - registrationDate) / (1000 * 60 * 60 * 24));
 
-    // Count active packages (help activities with 'active' or 'completed' status only)
-        // 'pending' means user just registered, not actually matched/active yet
+    // Count active packages (only 'active' status, not 'completed')
+        // This determines if user can offer help again
         const activePackagesResult = await pool.query(
           `SELECT COUNT(DISTINCT package_id) as count 
            FROM help_activities 
-           WHERE giver_id = $1 AND status IN ('active', 'completed')`,
+           WHERE giver_id = $1 AND status = 'active'`,
           [userId]
         );
 
