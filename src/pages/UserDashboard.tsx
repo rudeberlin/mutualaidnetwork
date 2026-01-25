@@ -166,10 +166,10 @@ export const UserDashboard: React.FC = () => {
             description: matchData.match.package.name,
           });
         }
-        // Update status to matched if we have a match
-        if (matchData.role === 'giver' && offerHelpStatus !== 'matched') {
+        // Update status to matched whenever backend reports a match (covers admin/manual matches)
+        if (matchData.role === 'giver') {
           setOfferHelpStatus('matched');
-        } else if (matchData.role === 'receiver' && receiveHelpStatus !== 'matched') {
+        } else if (matchData.role === 'receiver') {
           setReceiveHelpStatus('matched');
         }
       } else {
@@ -604,7 +604,7 @@ export const UserDashboard: React.FC = () => {
         {/* Active Help Requests - Persistent Status Display */}
         <div className="grid md:grid-cols-2 gap-6 mb-12">
           {/* Offer Help Status */}
-          {offerHelpStatus && (selectedOfferPackage || paymentMatch) && (
+          {(offerHelpStatus || paymentMatch) && (selectedOfferPackage || paymentMatch) && (
             <div className="bg-gradient-to-br from-slate-800/40 to-slate-900/40 border border-slate-700/50 rounded-lg p-6 backdrop-blur-sm">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-bold text-white">Offering Help</h3>
@@ -741,7 +741,7 @@ export const UserDashboard: React.FC = () => {
           )}
 
           {/* Receive Help Status */}
-          {receiveHelpStatus && selectedReceivePackage && (
+          {(receiveHelpStatus || paymentMatch) && (selectedReceivePackage || paymentMatch) && (
             <div className="bg-gradient-to-br from-slate-800/40 to-slate-900/40 border border-slate-700/50 rounded-lg p-6 backdrop-blur-sm">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-bold text-white">Requesting Help</h3>
@@ -757,16 +757,29 @@ export const UserDashboard: React.FC = () => {
               </div>
 
               {/* Package Info */}
-              <div className="bg-slate-700/30 rounded p-4 mb-4">
-                <div className="flex items-start gap-3">
-                  <span className="text-2xl">{selectedReceivePackage.icon}</span>
-                  <div>
-                    <p className="text-white font-semibold">{selectedReceivePackage.name}</p>
-                    <p className="text-emerald-400 font-bold text-lg">₵{selectedReceivePackage.amount.toLocaleString()}</p>
-                    <p className="text-slate-400 text-xs">ROI: {selectedReceivePackage.returnPercentage}% • {selectedReceivePackage.durationDays} days</p>
+              {selectedReceivePackage ? (
+                <div className="bg-slate-700/30 rounded p-4 mb-4">
+                  <div className="flex items-start gap-3">
+                    <span className="text-2xl">{selectedReceivePackage.icon}</span>
+                    <div>
+                      <p className="text-white font-semibold">{selectedReceivePackage.name}</p>
+                      <p className="text-emerald-400 font-bold text-lg">₵{selectedReceivePackage.amount.toLocaleString()}</p>
+                      <p className="text-slate-400 text-xs">ROI: {selectedReceivePackage.returnPercentage}% • {selectedReceivePackage.durationDays} days</p>
+                    </div>
                   </div>
                 </div>
-              </div>
+              ) : (
+                <div className="bg-slate-700/30 rounded p-4 mb-4">
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-300 font-bold">₵</div>
+                    <div>
+                      <p className="text-white font-semibold">Matched Help Request</p>
+                      <p className="text-emerald-400 font-bold text-lg">₵{paymentMatch?.amount?.toLocaleString() ?? '—'}</p>
+                      <p className="text-slate-400 text-xs">Awaiting package details</p>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {receiveHelpStatus === 'processing' && (
                 <div>
