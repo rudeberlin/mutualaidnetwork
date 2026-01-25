@@ -568,15 +568,15 @@ app.post('/api/help/register-offer', authenticateToken, async (req, res) => {
     }
     const pkg = pkgResult.rows[0];
 
-    // Check if user already has an active giver activity for this package
+    // Check if user already has an active giver activity (any package)
     const existing = await pool.query(`
       SELECT id FROM help_activities 
-      WHERE giver_id = $1 AND package_id = $2 AND status IN ('pending', 'matched', 'active')
+      WHERE giver_id = $1 AND status IN ('pending', 'matched', 'active')
       LIMIT 1
-    `, [userId, packageId]);
+    `, [userId]);
 
     if (existing.rows.length > 0) {
-      return res.status(400).json({ success: false, error: 'Already registered to offer this package' });
+      return res.status(400).json({ success: false, error: 'You already have an active help offer' });
     }
 
     // Create help activity as giver
