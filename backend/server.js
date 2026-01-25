@@ -1466,8 +1466,8 @@ app.post('/api/user/payment-confirm', authenticateToken, async (req, res) => {
       return res.status(400).json({ success: false, error: 'Match ID is required' });
     }
 
-    // Update payment match status to awaiting_confirmation
-    const result = await pool.query(
+    // First, try to update payment_matches table (integer ID)
+    let result = await pool.query(
       `UPDATE payment_matches 
        SET status = 'awaiting_confirmation' 
        WHERE id = $1 
@@ -1476,15 +1476,33 @@ app.post('/api/user/payment-confirm', authenticateToken, async (req, res) => {
       [matchId, req.userId]
     );
 
-    if (result.rows.length === 0) {
-      return res.status(404).json({ success: false, error: 'Match not found or unauthorized' });
+    if (result.rows.length > 0) {
+      return res.json({ 
+        success: true, 
+        message: 'Payment confirmation submitted. Admin will verify.',
+        data: result.rows[0] 
+      });
     }
 
-    res.json({ 
-      success: true, 
-      message: 'Payment confirmation submitted. Admin will verify.',
-      data: result.rows[0] 
-    });
+    // If not found in payment_matches, try help_activities table (UUID ID)
+    result = await pool.query(
+      `UPDATE help_activities 
+       SET status = 'awaiting_confirmation' 
+       WHERE id = $1 
+       AND (giver_id = $2 OR receiver_id = $2)
+       RETURNING *`,
+      [matchId, req.userId]
+    );
+
+    if (result.rows.length > 0) {
+      return res.json({ 
+        success: true, 
+        message: 'Payment confirmation submitted. Admin will verify.',
+        data: result.rows[0] 
+      });
+    }
+
+    res.status(404).json({ success: false, error: 'Match not found or unauthorized' });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
@@ -1495,19 +1513,36 @@ app.post('/api/user/confirm-payment-sent', authenticateToken, async (req, res) =
   try {
     const { matchId } = req.body;
     
-    // Mark as awaiting admin confirmation
-    const result = await pool.query(`
+    if (!matchId) {
+      return res.status(400).json({ success: false, error: 'Match ID is required' });
+    }
+
+    // First, try to update payment_matches table (integer ID)
+    let result = await pool.query(`
       UPDATE payment_matches 
       SET status = 'awaiting_confirmation'
       WHERE id = $1 AND giver_id = $2
       RETURNING *
     `, [matchId, req.userId]);
     
-    if (result.rows.length === 0) {
-      return res.status(404).json({ success: false, error: 'Match not found' });
+    if (result.rows.length > 0) {
+      return res.json({ success: true, data: result.rows[0] });
     }
+
+    // If not found in payment_matches, try help_activities table (UUID ID)
+    result = await pool.query(`
+      UPDATE help_activities 
+      SET status = 'awaiting_confirmation'
+      WHERE id = $1 AND giver_id = $2
+      RETURNING *
+    `, [matchId, req.userId]);
     
-    res.json({ success: true, data: result.rows[0] });
+    if (result.rows.length > 0) {
+      return res.json({ success: true, data: result.rows[0] });
+    }
+
+    // Match not found in either table
+    res.status(404).json({ success: false, error: 'Match not found' });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
