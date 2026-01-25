@@ -52,9 +52,6 @@ export const AdminPaymentMatching: React.FC = () => {
   const { token } = useAuthStore();
   const [manualEntry, setManualEntry] = useState({
     username: '',
-    userEmail: '',
-    userName: '',
-    userPhone: '',
     role: 'receiver' as 'receiver' | 'giver',
     amount: '',
     matchedWithName: '',
@@ -63,6 +60,7 @@ export const AdminPaymentMatching: React.FC = () => {
     paymentAccount: '',
     paymentMethod: ''
   });
+  const [requiredFieldErrors, setRequiredFieldErrors] = useState<Set<string>>(new Set());
 
   const fetchData = async () => {
     try {
@@ -153,13 +151,21 @@ export const AdminPaymentMatching: React.FC = () => {
   };
 
   const handleManualEntry = async () => {
-    const errors = [];
-    if (!manualEntry.username) errors.push('Username');
-    if (!manualEntry.amount) errors.push('Amount');
-    if (!manualEntry.matchedWithName) errors.push('Matched user name');
+    const errors = new Set<string>();
+    if (!manualEntry.username) errors.add('username');
+    if (!manualEntry.amount) errors.add('amount');
+    if (!manualEntry.matchedWithName) errors.add('matchedWithName');
     
-    if (errors.length > 0) {
-      setToast({ message: `Missing required fields: ${errors.join(', ')}`, type: 'error' });
+    setRequiredFieldErrors(errors);
+
+    if (errors.size > 0) {
+      const errorNames = Array.from(errors).map(e => {
+        if (e === 'username') return 'Username';
+        if (e === 'amount') return 'Amount';
+        if (e === 'matchedWithName') return 'Matched user name';
+        return e;
+      });
+      setToast({ message: `Missing required fields: ${errorNames.join(', ')}`, type: 'error' });
       return;
     }
 
@@ -173,9 +179,6 @@ export const AdminPaymentMatching: React.FC = () => {
       setShowManualEntryModal(false);
       setManualEntry({
         username: '',
-        userEmail: '',
-        userName: '',
-        userPhone: '',
         role: 'receiver',
         amount: '',
         matchedWithName: '',
@@ -184,6 +187,7 @@ export const AdminPaymentMatching: React.FC = () => {
         paymentAccount: '',
         paymentMethod: ''
       });
+      setRequiredFieldErrors(new Set());
       fetchData();
     } catch (error: any) {
       const errorMsg = error.response?.data?.error || 'Failed to create manual match';
@@ -509,53 +513,28 @@ export const AdminPaymentMatching: React.FC = () => {
             </div>
 
             <div className="p-6 space-y-4">
-              {/* User Details */}
+              {/* User Selection - Simple */}
               <div>
-                <h4 className="text-white font-semibold mb-3">User Details</h4>
-                <p className="text-slate-300 text-xs mb-3 bg-slate-800/50 p-3 rounded">
-                  💡 <strong>Tip:</strong> Enter an existing username. The user must already be registered in the system.
-                </p>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-slate-300 text-sm block mb-1">Username *</label>
-                    <input
-                      type="text"
-                      value={manualEntry.username}
-                      onChange={(e) => setManualEntry({ ...manualEntry, username: e.target.value })}
-                      className="w-full px-3 py-2 bg-slate-800 text-white rounded-lg border border-slate-700 focus:border-blue-500 focus:outline-none"
-                      placeholder="Enter username"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-slate-300 text-sm block mb-1">User Name</label>
-                    <input
-                      type="text"
-                      value={manualEntry.userName}
-                      onChange={(e) => setManualEntry({ ...manualEntry, userName: e.target.value })}
-                      className="w-full px-3 py-2 bg-slate-800 text-white rounded-lg border border-slate-700 focus:border-blue-500 focus:outline-none"
-                      placeholder="Enter user name"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-slate-300 text-sm block mb-1">User Email</label>
-                    <input
-                      type="email"
-                      value={manualEntry.userEmail}
-                      onChange={(e) => setManualEntry({ ...manualEntry, userEmail: e.target.value })}
-                      className="w-full px-3 py-2 bg-slate-800 text-white rounded-lg border border-slate-700 focus:border-blue-500 focus:outline-none"
-                      placeholder="user@example.com"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-slate-300 text-sm block mb-1">User Phone</label>
-                    <input
-                      type="tel"
-                      value={manualEntry.userPhone}
-                      onChange={(e) => setManualEntry({ ...manualEntry, userPhone: e.target.value })}
-                      className="w-full px-3 py-2 bg-slate-800 text-white rounded-lg border border-slate-700 focus:border-blue-500 focus:outline-none"
-                      placeholder="Phone number"
-                    />
-                  </div>
+                <h4 className="text-white font-semibold mb-3">Select User</h4>
+                <div>
+                  <label className="text-slate-300 text-sm block mb-2">
+                    Username <span className="text-red-400">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={manualEntry.username}
+                    onChange={(e) => {
+                      setManualEntry({ ...manualEntry, username: e.target.value });
+                      setRequiredFieldErrors(prev => new Set([...prev].filter(f => f !== 'username')));
+                    }}
+                    className={`w-full px-3 py-2 bg-slate-800 text-white rounded-lg border transition focus:outline-none ${
+                      requiredFieldErrors.has('username')
+                        ? 'border-red-500 focus:border-red-600 bg-red-950/20'
+                        : 'border-slate-700 focus:border-blue-500'
+                    }`}
+                    placeholder="Enter existing username"
+                  />
+                  <p className="text-slate-400 text-xs mt-2">💡 Enter an existing username. The user must already be registered.</p>
                 </div>
               </div>
 
@@ -564,7 +543,7 @@ export const AdminPaymentMatching: React.FC = () => {
                 <h4 className="text-white font-semibold mb-3">Match Details</h4>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="text-slate-300 text-sm block mb-1">User Role *</label>
+                    <label className="text-slate-300 text-sm block mb-2">User Role</label>
                     <select
                       value={manualEntry.role}
                       onChange={(e) => setManualEntry({ ...manualEntry, role: e.target.value as 'receiver' | 'giver' })}
@@ -575,14 +554,23 @@ export const AdminPaymentMatching: React.FC = () => {
                     </select>
                   </div>
                   <div>
-                    <label className="text-slate-300 text-sm block mb-1">Amount (USD) *</label>
+                    <label className="text-slate-300 text-sm block mb-2">
+                      Amount (USD) <span className="text-red-400">*</span>
+                    </label>
                     <input
                       type="number"
                       step="0.01"
                       min="0"
                       value={manualEntry.amount}
-                      onChange={(e) => setManualEntry({ ...manualEntry, amount: e.target.value })}
-                      className="w-full px-3 py-2 bg-slate-800 text-white rounded-lg border border-slate-700 focus:border-blue-500 focus:outline-none"
+                      onChange={(e) => {
+                        setManualEntry({ ...manualEntry, amount: e.target.value });
+                        setRequiredFieldErrors(prev => new Set([...prev].filter(f => f !== 'amount')));
+                      }}
+                      className={`w-full px-3 py-2 bg-slate-800 text-white rounded-lg border transition focus:outline-none ${
+                        requiredFieldErrors.has('amount')
+                          ? 'border-red-500 focus:border-red-600 bg-red-950/20'
+                          : 'border-slate-700 focus:border-blue-500'
+                      }`}
                       placeholder="0.00"
                     />
                   </div>
@@ -591,23 +579,32 @@ export const AdminPaymentMatching: React.FC = () => {
 
               {/* Matched Counterparty Details */}
               <div>
-                <h4 className="text-white font-semibold mb-3">Matched {manualEntry.role === 'receiver' ? 'Giver' : 'Receiver'} Details *</h4>
+                <h4 className="text-white font-semibold mb-3">Matched {manualEntry.role === 'receiver' ? 'Giver' : 'Receiver'} Details</h4>
                 <p className="text-slate-300 text-xs mb-3 bg-slate-800/50 p-3 rounded">
-                  📌 Enter at least the name of the person this user is matched with.
+                  📌 Enter at least the name of the person this user is matched with. Name is required.
                 </p>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="text-slate-300 text-sm block mb-1">Name *</label>
+                    <label className="text-slate-300 text-sm block mb-2">
+                      Name <span className="text-red-400">*</span>
+                    </label>
                     <input
                       type="text"
                       value={manualEntry.matchedWithName}
-                      onChange={(e) => setManualEntry({ ...manualEntry, matchedWithName: e.target.value })}
-                      className="w-full px-3 py-2 bg-slate-800 text-white rounded-lg border border-slate-700 focus:border-blue-500 focus:outline-none"
+                      onChange={(e) => {
+                        setManualEntry({ ...manualEntry, matchedWithName: e.target.value });
+                        setRequiredFieldErrors(prev => new Set([...prev].filter(f => f !== 'matchedWithName')));
+                      }}
+                      className={`w-full px-3 py-2 bg-slate-800 text-white rounded-lg border transition focus:outline-none ${
+                        requiredFieldErrors.has('matchedWithName')
+                          ? 'border-red-500 focus:border-red-600 bg-red-950/20'
+                          : 'border-slate-700 focus:border-blue-500'
+                      }`}
                       placeholder="Matched user name"
                     />
                   </div>
                   <div>
-                    <label className="text-slate-300 text-sm block mb-1">Email</label>
+                    <label className="text-slate-300 text-sm block mb-2">Email (Optional)</label>
                     <input
                       type="email"
                       value={manualEntry.matchedWithEmail}
@@ -617,7 +614,7 @@ export const AdminPaymentMatching: React.FC = () => {
                     />
                   </div>
                   <div>
-                    <label className="text-slate-300 text-sm block mb-1">Phone</label>
+                    <label className="text-slate-300 text-sm block mb-2">Phone (Optional)</label>
                     <input
                       type="tel"
                       value={manualEntry.matchedWithPhone}
@@ -627,7 +624,7 @@ export const AdminPaymentMatching: React.FC = () => {
                     />
                   </div>
                   <div>
-                    <label className="text-slate-300 text-sm block mb-1">Payment Account</label>
+                    <label className="text-slate-300 text-sm block mb-2">Payment Account (Optional)</label>
                     <input
                       type="text"
                       value={manualEntry.paymentAccount}
@@ -638,7 +635,7 @@ export const AdminPaymentMatching: React.FC = () => {
                   </div>
                 </div>
                 <div className="mt-4">
-                  <label className="text-slate-300 text-sm block mb-1">Payment Method</label>
+                  <label className="text-slate-300 text-sm block mb-2">Payment Method (Optional)</label>
                   <input
                     type="text"
                     value={manualEntry.paymentMethod}
