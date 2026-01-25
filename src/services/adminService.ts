@@ -97,13 +97,13 @@ export const adminService = {
   },
 
   async completeHelpActivity(id: string) {
-    // Backend endpoint to be created
-    return id;
+    const response = await api.post(`/api/admin/help-activities/${id}/complete`);
+    return response.data;
   },
 
   async resolveDispute(id: string) {
-    // Backend endpoint to be created
-    return id;
+    const response = await api.post(`/api/admin/help-activities/${id}/resolve`);
+    return response.data;
   },
 
   async fetchPayments(): Promise<AdminPayment[]> {

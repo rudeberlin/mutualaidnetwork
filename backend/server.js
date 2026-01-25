@@ -969,6 +969,48 @@ app.get('/api/admin/help-activities', authenticateToken, requireAdmin, async (re
   }
 });
 
+// Complete help activity
+app.post('/api/admin/help-activities/:id/complete', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const result = await pool.query(
+      `UPDATE help_activities 
+       SET status = 'completed', updated_at = NOW()
+       WHERE id = $1
+       RETURNING *`,
+      [req.params.id]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Help activity not found' });
+    }
+    
+    res.json({ success: true, data: result.rows[0] });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Resolve dispute on help activity
+app.post('/api/admin/help-activities/:id/resolve', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const result = await pool.query(
+      `UPDATE help_activities 
+       SET status = 'active', updated_at = NOW()
+       WHERE id = $1
+       RETURNING *`,
+      [req.params.id]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Help activity not found' });
+    }
+    
+    res.json({ success: true, data: result.rows[0] });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 app.put('/api/admin/packages/:id', authenticateToken, requireAdmin, async (req, res) => {
   try {
     const { name, amount, return_percentage, duration_days, description, active } = req.body;
