@@ -466,11 +466,12 @@ app.get('/api/user/:userId/stats', authenticateToken, async (req, res) => {
     const today = new Date();
     const daysSinceRegistration = Math.floor((today - registrationDate) / (1000 * 60 * 60 * 24));
 
-    // Count active packages (help activities with 'pending' or 'active' status)
+    // Count active packages (help activities with 'active' or 'completed' status only)
+        // 'pending' means user just registered, not actually matched/active yet
         const activePackagesResult = await pool.query(
           `SELECT COUNT(DISTINCT package_id) as count 
            FROM help_activities 
-           WHERE giver_id = $1 AND status IN ('pending', 'active')`,
+           WHERE giver_id = $1 AND status IN ('active', 'completed')`,
           [userId]
         );
 
@@ -478,16 +479,16 @@ app.get('/api/user/:userId/stats', authenticateToken, async (req, res) => {
         const helpProvidedResult = await pool.query(
           `SELECT COUNT(*) as count 
            FROM help_activities 
-           WHERE giver_id = $1`,
+           WHERE giver_id = $1 AND status IN ('active', 'completed')`,
           [userId]
         );
 
-        // Get active package details
+        // Get active package details (only matched and confirmed packages)
         const activePackagesDetailsResult = await pool.query(
           `SELECT p.*, ha.created_at as subscribed_at, ha.status
            FROM help_activities ha
            JOIN packages p ON ha.package_id = p.id
-           WHERE ha.giver_id = $1 AND ha.status IN ('pending', 'active')
+           WHERE ha.giver_id = $1 AND ha.status IN ('active', 'completed')
            ORDER BY ha.created_at DESC`,
           [userId]
         );
