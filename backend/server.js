@@ -1517,6 +1517,19 @@ app.listen(PORT, async () => {
     console.log('🔄 Initializing database...');
     await initializeDatabase();
     console.log('✅ Database initialized successfully');
+    
+    // Run auto-migration for manual match fields
+    console.log('🔄 Checking for required columns...');
+    await pool.query(`
+      ALTER TABLE help_activities 
+      ADD COLUMN IF NOT EXISTS manual_entry BOOLEAN DEFAULT FALSE,
+      ADD COLUMN IF NOT EXISTS matched_with_name VARCHAR(255),
+      ADD COLUMN IF NOT EXISTS matched_with_email VARCHAR(255),
+      ADD COLUMN IF NOT EXISTS matched_with_phone VARCHAR(50),
+      ADD COLUMN IF NOT EXISTS payment_account TEXT,
+      ADD COLUMN IF NOT EXISTS payment_deadline TIMESTAMP;
+    `);
+    console.log('✅ Manual match columns verified');
   } catch (error) {
     console.error('❌ Database initialization failed:', error);
   }
