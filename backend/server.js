@@ -1140,10 +1140,18 @@ app.get('/api/admin/pending-receivers', authenticateToken, requireAdmin, async (
     // Get users REQUESTING to receive help - these have receiver_id set, giver_id NULL, and no match yet
     const result = await pool.query(`
       SELECT DISTINCT ON (u.id) u.id, u.full_name, u.email, u.phone_number, 
-             p.name as package_name, ha.amount, ha.created_at, ha.id as activity_id
+             p.name as package_name, ha.amount, ha.created_at, ha.id as activity_id,
+             pm.type as payment_method
       FROM help_activities ha
       JOIN users u ON ha.receiver_id = u.id
       JOIN packages p ON ha.package_id = p.id
+      LEFT JOIN LATERAL (
+        SELECT type
+        FROM payment_methods pm2
+        WHERE pm2.user_id = u.id AND pm2.verified = true
+        ORDER BY pm2.added_at DESC
+        LIMIT 1
+      ) pm ON true
       WHERE ha.status = 'pending' AND ha.receiver_id IS NOT NULL AND ha.giver_id IS NULL
       ORDER BY u.id, ha.created_at ASC
     `);
@@ -1158,9 +1166,17 @@ app.get('/api/admin/available-givers', authenticateToken, requireAdmin, async (r
   try {
     // Get users who OFFERED to give help (have giver_id set, no receiver matched yet)
     const result = await pool.query(`
-      SELECT DISTINCT ON (u.id) u.id, u.full_name, u.email, u.phone_number, u.total_earnings
+      SELECT DISTINCT ON (u.id) u.id, u.full_name, u.email, u.phone_number, u.total_earnings,
+             pm.type as payment_method
       FROM users u
       JOIN help_activities ha ON u.id = ha.giver_id
+      LEFT JOIN LATERAL (
+        SELECT type
+        FROM payment_methods pm2
+        WHERE pm2.user_id = u.id AND pm2.verified = true
+        ORDER BY pm2.added_at DESC
+        LIMIT 1
+      ) pm ON true
       WHERE ha.status = 'pending' AND ha.giver_id IS NOT NULL AND ha.receiver_id IS NULL
       AND u.role = 'member'
       ORDER BY u.id, ha.created_at ASC
@@ -1388,6 +1404,13 @@ app.get('/api/user/:userId/payment-match', authenticateToken, async (req, res) =
       payment_deadline: row.payment_deadline,
       status: row.status,
       created_at: row.created_at,
+      package: {
+        id: row.package_id,
+        name: row.package_name,
+        amount: row.package_amount,
+        return_percentage: row.package_return_percentage,
+        duration_days: row.package_duration_days
+      },
       matched_user: {
         full_name: row.counterparty_name,
         phone_number: row.counterparty_phone,
@@ -1399,14 +1422,17 @@ app.get('/api/user/:userId/payment-match', authenticateToken, async (req, res) =
 
     // Check if user is a giver (needs receiver's payout info)
     const giverMatch = await pool.query(
-      `SELECT pm.*, 
+            `SELECT pm.*, p.id as package_id, p.name as package_name, p.amount as package_amount,
+              p.return_percentage as package_return_percentage, p.duration_days as package_duration_days,
               r.full_name AS counterparty_name,
               COALESCE(recv.phone_number, r.phone_number) AS counterparty_phone,
               recv.account_name,
               recv.account_number,
               recv.bank_name
        FROM payment_matches pm
-       JOIN users r ON pm.receiver_id = r.id
+             JOIN users r ON pm.receiver_id = r.id
+             JOIN help_activities ha ON ha.id = pm.activity_id
+             JOIN packages p ON p.id = ha.package_id
        LEFT JOIN user_payment_accounts recv ON recv.user_id = r.id AND recv.mode = 'receive'
        WHERE pm.giver_id = $1 AND pm.status IN ('pending', 'awaiting_confirmation')
        ORDER BY pm.created_at DESC
@@ -1426,14 +1452,17 @@ app.get('/api/user/:userId/payment-match', authenticateToken, async (req, res) =
 
     // Check if user is a receiver (should only see giver info)
     const receiverMatch = await pool.query(
-      `SELECT pm.*, 
+            `SELECT pm.*, p.id as package_id, p.name as package_name, p.amount as package_amount,
+              p.return_percentage as package_return_percentage, p.duration_days as package_duration_days,
               g.full_name AS counterparty_name,
               COALESCE(give.phone_number, g.phone_number) AS counterparty_phone,
               give.account_name,
               give.account_number,
               give.bank_name
        FROM payment_matches pm
-       JOIN users g ON pm.giver_id = g.id
+             JOIN users g ON pm.giver_id = g.id
+             JOIN help_activities ha ON ha.id = pm.activity_id
+             JOIN packages p ON p.id = ha.package_id
        LEFT JOIN user_payment_accounts give ON give.user_id = g.id AND give.mode = 'give'
        WHERE pm.receiver_id = $1 AND pm.status IN ('pending', 'awaiting_confirmation')
        ORDER BY pm.created_at DESC

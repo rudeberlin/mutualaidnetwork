@@ -16,6 +16,7 @@ interface PendingReceiver {
   package_name: string;
   amount: number;
   created_at: string;
+  payment_method?: string | null;
 }
 
 interface AvailableGiver {
@@ -24,6 +25,7 @@ interface AvailableGiver {
   email: string;
   phone_number: string;
   total_earnings: number;
+  payment_method?: string | null;
 }
 
 interface PaymentMatch {
@@ -237,6 +239,9 @@ export const AdminPaymentMatching: React.FC = () => {
                 <div>
                   <p className="text-white font-semibold">{receiver.full_name}</p>
                   <p className="text-slate-400 text-sm">{receiver.email}</p>
+                    {receiver.payment_method && (
+                      <p className="text-slate-300 text-xs mt-1">Payment Method: {receiver.payment_method}</p>
+                    )}
                 </div>
                 <div className="flex items-center gap-3">
                   <div className="text-right">
@@ -277,6 +282,9 @@ export const AdminPaymentMatching: React.FC = () => {
                 <div>
                   <p className="text-white font-semibold">{giver.full_name}</p>
                   <p className="text-slate-400 text-sm">{giver.phone_number}</p>
+                    {giver.payment_method && (
+                      <p className="text-slate-300 text-xs mt-1">Payment Method: {giver.payment_method}</p>
+                    )}
                 </div>
                 <div className="flex items-center gap-3">
                   <div className="text-right">

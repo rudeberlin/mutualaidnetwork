@@ -113,6 +113,18 @@ export const UserDashboard: React.FC = () => {
             bank_name: matchData.match.matched_user.bank_name
           } : null
         });
+
+        // If we have package info from the match and no selectedOfferPackage, set it
+        if (!selectedOfferPackage && matchData.match.package) {
+          setSelectedOfferPackage({
+            id: matchData.match.package.id,
+            name: matchData.match.package.name,
+            amount: Number(matchData.match.package.amount),
+            returnPercentage: Number(matchData.match.package.return_percentage),
+            durationDays: Number(matchData.match.package.duration_days),
+            description: matchData.match.package.name,
+          });
+        }
         // Update status to matched if we have a match
         if (matchData.role === 'giver' && offerHelpStatus !== 'matched') {
           setOfferHelpStatus('matched');
@@ -126,7 +138,7 @@ export const UserDashboard: React.FC = () => {
       console.error('Failed to fetch payment match:', error);
       setPaymentMatch(null);
     }
-  }, [user?.id, token, offerHelpStatus, receiveHelpStatus]);
+  }, [user?.id, token, offerHelpStatus, receiveHelpStatus, selectedOfferPackage]);
 
   // Set up polling for payment match data
   useEffect(() => {
