@@ -1487,6 +1487,7 @@ app.get('/api/user/:userId/payment-match', authenticateToken, async (req, res) =
               ha.matched_with_phone AS counterparty_phone,
               ha.payment_account,
               ha.matched_with_email,
+              ha.payment_method,
               CASE 
                 WHEN ha.giver_id = $1 THEN 'giver'
                 WHEN ha.receiver_id = $1 THEN 'receiver'
@@ -1518,7 +1519,7 @@ app.get('/api/user/:userId/payment-match', authenticateToken, async (req, res) =
               email: row.matched_with_email,
               account_number: row.payment_account || '',
               account_name: row.counterparty_name || '',
-              bank_name: 'Manual Entry'
+              bank_name: row.payment_method || 'Manual Entry'
             }
           }
         }
