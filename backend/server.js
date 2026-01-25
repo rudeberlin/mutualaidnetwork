@@ -485,7 +485,8 @@ app.get('/api/user/:userId/stats', authenticateToken, async (req, res) => {
 
         // Get active package details (only matched and confirmed packages)
         const activePackagesDetailsResult = await pool.query(
-          `SELECT p.*, ha.created_at as subscribed_at, ha.status
+          `SELECT p.id, p.name as package_name, p.amount, p.return_percentage, 
+                  p.duration_days, p.description, ha.created_at as subscribed_at, ha.status
            FROM help_activities ha
            JOIN packages p ON ha.package_id = p.id
            WHERE ha.giver_id = $1 AND ha.status IN ('active', 'completed')

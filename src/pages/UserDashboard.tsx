@@ -880,7 +880,7 @@ export const UserDashboard: React.FC = () => {
                         <div className="flex items-center justify-between mb-2">
                           <div className="min-w-0 flex-1">
                             <p className="text-white font-semibold text-sm">{pkg.package_name}</p>
-                            <p className="text-slate-400 text-xs">${pkg.amount}</p>
+                            <p className="text-slate-400 text-xs">₵{pkg.amount}</p>
                           </div>
                           <div className="text-right ml-2">
                             <p className="text-emerald-400 font-bold text-xs">{(hourlyReturnPercent * 100).toFixed(2)}%/hr</p>
