@@ -195,7 +195,7 @@ app.post('/api/register', upload.fields([{ name: 'idFront' }, { name: 'idBack' }
         id_front_image, id_back_image, id_verified, is_verified, 
         payment_method_verified, total_earnings
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
-      RETURNING id, full_name, username, email, phone_number, country, my_referral_code, profile_photo, role, is_verified, payment_method_verified, total_earnings, created_at
+      RETURNING id, user_number, display_id, full_name, username, email, phone_number, country, my_referral_code, profile_photo, role, is_verified, payment_method_verified, total_earnings, created_at
     `, [
       userId, fullName, username, email, phoneNumber, country, referralCode || null,
       userReferralCode, hashedPassword, profilePhoto, 'member',
@@ -206,10 +206,21 @@ app.post('/api/register', upload.fields([{ name: 'idFront' }, { name: 'idBack' }
 
     const token = generateToken(userId);
     
+    // Get the new user
+    let newUser = result.rows[0];
+    
+    // Generate and update display_id if not set
+    if (!newUser.display_id && newUser.user_number) {
+      const displayId = 'MAN-' + String(newUser.user_number).padStart(6, '0');
+      await pool.query('UPDATE users SET display_id = $1 WHERE id = $2', [displayId, userId]);
+      newUser.display_id = displayId;
+    }
+    
     // Transform user object to camelCase for frontend
-    const newUser = result.rows[0];
     const userResponse = {
       id: newUser.id,
+      userNumber: newUser.user_number,
+      displayId: newUser.display_id,
       fullName: newUser.full_name,
       username: newUser.username,
       email: newUser.email,
@@ -273,6 +284,8 @@ app.post('/api/login', async (req, res) => {
     // Transform user object to camelCase for frontend
     const userResponse = {
       id: user.id,
+      userNumber: user.user_number,
+      displayId: user.display_id,
       fullName: user.full_name,
       username: user.username,
       email: user.email,
@@ -1147,7 +1160,7 @@ app.post('/api/admin/create-match', authenticateToken, requireAdmin, async (req,
 app.post('/api/admin/create-manual-match', authenticateToken, requireAdmin, async (req, res) => {
   try {
     const { 
-      username, userName, userEmail, userPhone, role, amount,
+      username, role, amount,
       matchedWithName, matchedWithEmail, matchedWithPhone, 
       paymentAccount, paymentMethod 
     } = req.body;
@@ -1160,8 +1173,11 @@ app.post('/api/admin/create-manual-match', authenticateToken, requireAdmin, asyn
       });
     }
 
-    // Look up user by username
-    const userResult = await pool.query('SELECT id, full_name, email, phone_number FROM users WHERE username = $1', [username]);
+    // Look up user by username or display_id
+    const userResult = await pool.query(
+      'SELECT id, user_number, display_id, full_name, email, phone_number FROM users WHERE username = $1 OR display_id = $1 OR user_number = $2',
+      [username, parseInt(username) || null]
+    );
     if (userResult.rows.length === 0) {
       return res.status(404).json({
         success: false,
@@ -1543,6 +1559,52 @@ app.listen(PORT, async () => {
       ADD COLUMN IF NOT EXISTS admin_approved BOOLEAN DEFAULT FALSE;
     `);
     console.log('✅ Manual match columns verified');
+
+    // Auto-migration for unique user ID fields
+    console.log('🔄 Checking for unique user ID fields...');
+    try {
+      // Add user_number SERIAL if not exists
+      const userNumberCheck = await pool.query(`
+        SELECT column_name FROM information_schema.columns 
+        WHERE table_name = 'users' AND column_name = 'user_number'
+      `);
+      
+      if (userNumberCheck.rows.length === 0) {
+        // Create sequence for user_number if not exists
+        await pool.query(`
+          CREATE SEQUENCE IF NOT EXISTS users_user_number_seq;
+          ALTER TABLE users 
+          ADD COLUMN user_number INTEGER UNIQUE DEFAULT nextval('users_user_number_seq');
+        `);
+        console.log('✅ User number field added');
+      }
+
+      // Add display_id if not exists
+      const displayIdCheck = await pool.query(`
+        SELECT column_name FROM information_schema.columns 
+        WHERE table_name = 'users' AND column_name = 'display_id'
+      `);
+      
+      if (displayIdCheck.rows.length === 0) {
+        await pool.query(`
+          ALTER TABLE users 
+          ADD COLUMN display_id VARCHAR(20) UNIQUE;
+        `);
+        
+        // Populate display_ids for existing users with user_numbers
+        await pool.query(`
+          UPDATE users SET display_id = 'MAN-' || LPAD(user_number::text, 6, '0') 
+          WHERE display_id IS NULL AND user_number IS NOT NULL
+        `);
+        console.log('✅ Display ID field added and populated');
+      }
+    } catch (migrationError) {
+      if (migrationError.message.includes('already exists')) {
+        console.log('✅ User ID fields already exist');
+      } else {
+        console.error('⚠️  User ID migration issue:', migrationError.message);
+      }
+    }
   } catch (error) {
     console.error('❌ Database initialization failed:', error);
   }

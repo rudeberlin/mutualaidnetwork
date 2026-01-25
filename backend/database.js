@@ -30,6 +30,8 @@ export async function initializeDatabase() {
     await client.query(`
       CREATE TABLE IF NOT EXISTS users (
         id VARCHAR(255) PRIMARY KEY,
+        user_number SERIAL UNIQUE,
+        display_id VARCHAR(20) UNIQUE,
         full_name VARCHAR(255) NOT NULL,
         username VARCHAR(255) UNIQUE NOT NULL,
         email VARCHAR(255) UNIQUE NOT NULL,

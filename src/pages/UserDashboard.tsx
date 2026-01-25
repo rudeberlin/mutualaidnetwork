@@ -371,19 +371,26 @@ export const UserDashboard: React.FC = () => {
             />
             <div>
               <h1 className="text-4xl font-bold text-white mb-2">{currentUser.fullName}</h1>
-              <p className="text-slate-400">
-                {currentUser.isVerified ? (
-                  <span className="flex items-center gap-2">
-                    <span className="w-2 h-2 bg-emerald-500 rounded-full"></span>
-                    Verified Member
-                  </span>
-                ) : (
-                  <span className="flex items-center gap-2">
-                    <span className="w-2 h-2 bg-amber-500 rounded-full"></span>
-                    Pending Verification
+              <div className="flex items-center gap-4 mb-2">
+                <p className="text-slate-400">
+                  {currentUser.isVerified ? (
+                    <span className="flex items-center gap-2">
+                      <span className="w-2 h-2 bg-emerald-500 rounded-full"></span>
+                      Verified Member
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-2">
+                      <span className="w-2 h-2 bg-amber-500 rounded-full"></span>
+                      Pending Verification
+                    </span>
+                  )}
+                </p>
+                {currentUser.displayId && (
+                  <span className="px-3 py-1 bg-blue-500/20 border border-blue-400/50 rounded-full text-blue-300 text-sm font-mono">
+                    ID: {currentUser.displayId}
                   </span>
                 )}
-              </p>
+              </div>
             </div>
           </div>
           <div className="flex gap-3">

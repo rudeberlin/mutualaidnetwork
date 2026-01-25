@@ -63,7 +63,7 @@ export const AdminUsers: React.FC = () => {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-white/10 text-slate-300">
-              <th className="px-4 py-3 text-left">ID</th>
+              <th className="px-4 py-3 text-left">User ID</th>
               <th className="px-4 py-3 text-left">User</th>
               <th className="px-4 py-3 text-left">Username</th>
               <th className="px-4 py-3 text-left">Email</th>
@@ -78,8 +78,13 @@ export const AdminUsers: React.FC = () => {
             {users.map((u) => (
               <tr key={u.id} className="hover:bg-white/5 text-slate-200">
                 <td className="px-4 py-3">
-                  <div className="font-mono text-xs text-slate-400">
-                    {u.id.substring(0, 8)}...
+                  <div className="space-y-1">
+                    <div className="font-mono text-xs font-semibold text-blue-400">
+                      {u.displayId || u.userNumber ? `MAN-${String(u.userNumber || 0).padStart(6, '0')}` : 'N/A'}
+                    </div>
+                    <div className="font-mono text-xs text-slate-500">
+                      #{u.userNumber || 'N/A'}
+                    </div>
                   </div>
                 </td>
                 <td className="px-4 py-3">
@@ -201,6 +206,7 @@ export const AdminUsers: React.FC = () => {
                 <div>
                   <h3 className="text-white font-bold text-xl">{viewingUser.fullName}</h3>
                   <p className="text-slate-400">@{viewingUser.username}</p>
+                  <p className="text-blue-400 text-sm font-semibold">{viewingUser.displayId || `MAN-${String(viewingUser.userNumber || 0).padStart(6, '0')}`}</p>
                 </div>
               </div>
               <button onClick={() => setViewingUser(null)} className="p-2 hover:bg-white/10 rounded-lg transition-all">

@@ -10,6 +10,8 @@ export interface IDDocument {
 
 export interface User {
   id: string;
+  userNumber?: number;
+  displayId?: string;
   fullName: string;
   username: string;
   email: string;
