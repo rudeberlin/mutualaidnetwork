@@ -466,12 +466,12 @@ app.get('/api/user/:userId/stats', authenticateToken, async (req, res) => {
     const today = new Date();
     const daysSinceRegistration = Math.floor((today - registrationDate) / (1000 * 60 * 60 * 24));
 
-    // Count active packages (only 'active' status, not 'completed')
+    // Count active packages (matched or active status)
         // This determines if user can offer help again
         const activePackagesResult = await pool.query(
           `SELECT COUNT(DISTINCT package_id) as count 
            FROM help_activities 
-           WHERE giver_id = $1 AND status = 'active'`,
+           WHERE giver_id = $1 AND status IN ('matched', 'active')`,
           [userId]
         );
 
@@ -483,14 +483,15 @@ app.get('/api/user/:userId/stats', authenticateToken, async (req, res) => {
           [userId]
         );
 
-        // Get active package details (only matched and confirmed packages)
+        // Get active package details (matched and active packages)
         const activePackagesDetailsResult = await pool.query(
           `SELECT p.id, p.name as package_name, p.amount, p.return_percentage, 
-                  p.duration_days, p.description, ha.package_id, ha.created_at as subscribed_at, 
+                  p.duration_days, p.description, ha.package_id, 
+                  COALESCE(ha.maturity_date, ha.created_at) as subscribed_at, 
                   ha.status, ha.id as activity_id
            FROM help_activities ha
            JOIN packages p ON ha.package_id = p.id
-           WHERE ha.giver_id = $1 AND ha.status IN ('active', 'completed')
+           WHERE ha.giver_id = $1 AND ha.status IN ('matched', 'active')
            ORDER BY ha.created_at DESC`,
           [userId]
         );
@@ -1305,7 +1306,7 @@ app.post('/api/admin/payment-matches/:id/confirm', authenticateToken, requireAdm
   try {
     const result = await pool.query(`
       UPDATE payment_matches 
-      SET status = 'completed', completed_at = CURRENT_TIMESTAMP
+      SET status = 'confirmed', completed_at = CURRENT_TIMESTAMP
       WHERE id = $1
       RETURNING *
     `, [req.params.id]);
@@ -1314,10 +1315,21 @@ app.post('/api/admin/payment-matches/:id/confirm', authenticateToken, requireAdm
       return res.status(404).json({ success: false, error: 'Match not found' });
     }
     
-    // Update help activity status
+    // Get package duration to calculate maturity date
+    const packageInfo = await pool.query(`
+      SELECT p.duration_days 
+      FROM help_activities ha
+      JOIN packages p ON ha.package_id = p.id
+      WHERE ha.id = $1
+    `, [result.rows[0].help_activity_id]);
+    
+    const durationDays = packageInfo.rows[0]?.duration_days || 5;
+    
+    // Update help activity status to 'active' and set maturity date
     await pool.query(`
       UPDATE help_activities 
-      SET status = 'completed'
+      SET status = 'active', 
+          maturity_date = CURRENT_TIMESTAMP + INTERVAL '${durationDays} days'
       WHERE id = $1
     `, [result.rows[0].help_activity_id]);
     
