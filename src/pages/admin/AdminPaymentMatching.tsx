@@ -153,8 +153,13 @@ export const AdminPaymentMatching: React.FC = () => {
   };
 
   const handleManualEntry = async () => {
-    if (!manualEntry.username || !manualEntry.amount || !manualEntry.matchedWithName) {
-      setToast({ message: 'Please fill in all required fields', type: 'error' });
+    const errors = [];
+    if (!manualEntry.username) errors.push('Username');
+    if (!manualEntry.amount) errors.push('Amount');
+    if (!manualEntry.matchedWithName) errors.push('Matched user name');
+    
+    if (errors.length > 0) {
+      setToast({ message: `Missing required fields: ${errors.join(', ')}`, type: 'error' });
       return;
     }
 
@@ -570,9 +575,11 @@ export const AdminPaymentMatching: React.FC = () => {
                     </select>
                   </div>
                   <div>
-                    <label className="text-slate-300 text-sm block mb-1">Amount *</label>
+                    <label className="text-slate-300 text-sm block mb-1">Amount (USD) *</label>
                     <input
                       type="number"
+                      step="0.01"
+                      min="0"
                       value={manualEntry.amount}
                       onChange={(e) => setManualEntry({ ...manualEntry, amount: e.target.value })}
                       className="w-full px-3 py-2 bg-slate-800 text-white rounded-lg border border-slate-700 focus:border-blue-500 focus:outline-none"
@@ -585,6 +592,9 @@ export const AdminPaymentMatching: React.FC = () => {
               {/* Matched Counterparty Details */}
               <div>
                 <h4 className="text-white font-semibold mb-3">Matched {manualEntry.role === 'receiver' ? 'Giver' : 'Receiver'} Details *</h4>
+                <p className="text-slate-300 text-xs mb-3 bg-slate-800/50 p-3 rounded">
+                  📌 Enter at least the name of the person this user is matched with.
+                </p>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="text-slate-300 text-sm block mb-1">Name *</label>
