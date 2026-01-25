@@ -51,7 +51,7 @@ export const AdminPaymentMatching: React.FC = () => {
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const { token } = useAuthStore();
   const [manualEntry, setManualEntry] = useState({
-    userId: '',
+    username: '',
     userEmail: '',
     userName: '',
     userPhone: '',
@@ -153,7 +153,7 @@ export const AdminPaymentMatching: React.FC = () => {
   };
 
   const handleManualEntry = async () => {
-    if (!manualEntry.userId || !manualEntry.amount || !manualEntry.matchedWithName) {
+    if (!manualEntry.username || !manualEntry.amount || !manualEntry.matchedWithName) {
       setToast({ message: 'Please fill in all required fields', type: 'error' });
       return;
     }
@@ -167,7 +167,7 @@ export const AdminPaymentMatching: React.FC = () => {
       setToast({ message: 'Manual payment match created successfully', type: 'success' });
       setShowManualEntryModal(false);
       setManualEntry({
-        userId: '',
+        username: '',
         userEmail: '',
         userName: '',
         userPhone: '',
@@ -508,17 +508,17 @@ export const AdminPaymentMatching: React.FC = () => {
               <div>
                 <h4 className="text-white font-semibold mb-3">User Details</h4>
                 <p className="text-slate-300 text-xs mb-3 bg-slate-800/50 p-3 rounded">
-                  💡 <strong>Tip:</strong> Enter an existing user ID from the system. The user must already be registered.
+                  💡 <strong>Tip:</strong> Enter an existing username. The user must already be registered in the system.
                 </p>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="text-slate-300 text-sm block mb-1">User ID *</label>
+                    <label className="text-slate-300 text-sm block mb-1">Username *</label>
                     <input
                       type="text"
-                      value={manualEntry.userId}
-                      onChange={(e) => setManualEntry({ ...manualEntry, userId: e.target.value })}
+                      value={manualEntry.username}
+                      onChange={(e) => setManualEntry({ ...manualEntry, username: e.target.value })}
                       className="w-full px-3 py-2 bg-slate-800 text-white rounded-lg border border-slate-700 focus:border-blue-500 focus:outline-none"
-                      placeholder="Enter user ID"
+                      placeholder="Enter username"
                     />
                   </div>
                   <div>

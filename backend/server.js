@@ -1147,27 +1147,29 @@ app.post('/api/admin/create-match', authenticateToken, requireAdmin, async (req,
 app.post('/api/admin/create-manual-match', authenticateToken, requireAdmin, async (req, res) => {
   try {
     const { 
-      userId, userName, userEmail, userPhone, role, amount,
+      username, userName, userEmail, userPhone, role, amount,
       matchedWithName, matchedWithEmail, matchedWithPhone, 
       paymentAccount, paymentMethod 
     } = req.body;
     
     // Validate required fields
-    if (!userId || !amount || !matchedWithName) {
+    if (!username || !amount || !matchedWithName) {
       return res.status(400).json({ 
         success: false, 
-        error: 'User ID, amount, and matched user name are required' 
+        error: 'Username, amount, and matched user name are required' 
       });
     }
 
-    // Verify user exists
-    const userCheck = await pool.query('SELECT id FROM users WHERE id = $1', [userId]);
-    if (userCheck.rows.length === 0) {
+    // Look up user by username
+    const userResult = await pool.query('SELECT id, full_name, email, phone_number FROM users WHERE username = $1', [username]);
+    if (userResult.rows.length === 0) {
       return res.status(404).json({
         success: false,
-        error: 'User not found in system'
+        error: `User '${username}' not found in system`
       });
     }
+
+    const userId = userResult.rows[0].id;
 
     // Set payment deadline to 6 hours from now
     const paymentDeadline = new Date();
