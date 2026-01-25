@@ -466,34 +466,41 @@ app.get('/api/user/:userId/stats', authenticateToken, async (req, res) => {
     const today = new Date();
     const daysSinceRegistration = Math.floor((today - registrationDate) / (1000 * 60 * 60 * 24));
 
-    // Count active packages (matched or active status)
-        // This determines if user can offer help again
+    // Count active packages (matched or active) for both giver and receiver
         const activePackagesResult = await pool.query(
           `SELECT COUNT(DISTINCT package_id) as count 
            FROM help_activities 
-           WHERE giver_id = $1 AND status IN ('matched', 'active')`,
+           WHERE (giver_id = $1 OR receiver_id = $1)
+             AND status IN ('matched', 'active')`,
           [userId]
         );
 
-        // Count help provided (number of times user has completed giving help)
+        // Count help provided (treat active/confirmed/completed as provided)
         const helpProvidedResult = await pool.query(
           `SELECT COUNT(*) as count 
            FROM help_activities 
-           WHERE giver_id = $1 AND status = 'completed'`,
+           WHERE giver_id = $1 AND status IN ('active', 'confirmed', 'completed')`,
           [userId]
         );
 
-        // Get active package details (matched and active packages)
+        // Get active package details (matched and active) for both roles with derived maturity
         const activePackagesDetailsResult = await pool.query(
           `SELECT p.id, p.name as package_name, p.amount, p.return_percentage, 
                   p.duration_days, p.description, ha.package_id, 
                   ha.created_at as subscribed_at,
                   ha.maturity_date,
                   ha.status, ha.id as activity_id,
-                  EXTRACT(EPOCH FROM (ha.maturity_date - CURRENT_TIMESTAMP)) as time_remaining_seconds
+                  CASE WHEN ha.giver_id = $1 THEN 'giver' ELSE 'receiver' END AS user_role,
+                  EXTRACT(EPOCH FROM (
+                    COALESCE(
+                      ha.maturity_date,
+                      ha.created_at + (p.duration_days || ' days')::interval
+                    ) - CURRENT_TIMESTAMP
+                  )) as time_remaining_seconds
            FROM help_activities ha
            JOIN packages p ON ha.package_id = p.id
-           WHERE ha.giver_id = $1 AND ha.status IN ('matched', 'active')
+           WHERE (ha.giver_id = $1 OR ha.receiver_id = $1)
+             AND ha.status IN ('matched', 'active')
            ORDER BY ha.created_at DESC`,
           [userId]
         );
