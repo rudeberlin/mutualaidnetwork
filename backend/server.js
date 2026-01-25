@@ -468,25 +468,29 @@ app.get('/api/user/:userId/stats', authenticateToken, async (req, res) => {
 
     // Count active packages (matched or active) for both giver and receiver
         const activePackagesResult = await pool.query(
-          `SELECT COUNT(DISTINCT package_id) as count 
+          `SELECT COUNT(*) as count 
            FROM help_activities 
            WHERE (giver_id = $1 OR receiver_id = $1)
              AND status IN ('matched', 'active')`,
           [userId]
         );
 
-        // Count help provided (treat active/confirmed/completed as provided)
+        // Count help provided (treat matched/active/confirmed/completed as provided)
         const helpProvidedResult = await pool.query(
           `SELECT COUNT(*) as count 
            FROM help_activities 
-           WHERE giver_id = $1 AND status IN ('active', 'confirmed', 'completed')`,
+           WHERE giver_id = $1 AND status IN ('matched', 'active', 'confirmed', 'completed')`,
           [userId]
         );
 
         // Get active package details (matched and active) for both roles with derived maturity
         const activePackagesDetailsResult = await pool.query(
-          `SELECT p.id, p.name as package_name, p.amount, p.return_percentage, 
-                  p.duration_days, p.description, ha.package_id, 
+          `SELECT p.id, COALESCE(p.name, 'Manual Package') as package_name,
+                  COALESCE(p.amount, ha.amount) as amount,
+                  COALESCE(p.return_percentage, 50) as return_percentage, 
+                  COALESCE(p.duration_days, 5) as duration_days,
+                  COALESCE(p.description, 'Manual entry package') as description,
+                  ha.package_id, 
                   ha.created_at as subscribed_at,
                   ha.maturity_date,
                   ha.status, ha.id as activity_id,
@@ -494,11 +498,11 @@ app.get('/api/user/:userId/stats', authenticateToken, async (req, res) => {
                   EXTRACT(EPOCH FROM (
                     COALESCE(
                       ha.maturity_date,
-                      ha.created_at + (p.duration_days || ' days')::interval
+                      ha.created_at + (COALESCE(p.duration_days,5) || ' days')::interval
                     ) - CURRENT_TIMESTAMP
                   )) as time_remaining_seconds
            FROM help_activities ha
-           JOIN packages p ON ha.package_id = p.id
+           LEFT JOIN packages p ON ha.package_id = p.id
            WHERE (ha.giver_id = $1 OR ha.receiver_id = $1)
              AND ha.status IN ('matched', 'active')
            ORDER BY ha.created_at DESC`,
@@ -1263,20 +1267,28 @@ app.post('/api/admin/create-manual-match', authenticateToken, requireAdmin, asyn
     paymentDeadline.setHours(paymentDeadline.getHours() + 6);
     
     // Create a help activity for tracking
+    // Choose closest package by amount (fallback to first package)
+    const pkgMatch = await pool.query(
+      `SELECT id, duration_days FROM packages ORDER BY ABS(amount - $1) ASC LIMIT 1`,
+      [amount]
+    );
+    const matchedPackageId = pkgMatch.rows[0]?.id || 'pkg-1';
+    const matchedDuration = pkgMatch.rows[0]?.duration_days || 5;
+
     const activityId = uuidv4();
     const helpActivityResult = await pool.query(`
       INSERT INTO help_activities (
         id, ${role === 'receiver' ? 'receiver_id' : 'giver_id'}, 
-        amount, status, payment_method, payment_deadline, admin_approved, 
+        package_id, amount, status, payment_method, payment_deadline, admin_approved, 
         matched_at, manual_entry, matched_with_name, matched_with_email, 
-        matched_with_phone, payment_account
+        matched_with_phone, payment_account, maturity_date
       )
-      VALUES ($1, $2, $3, 'matched', $4, $5, true, CURRENT_TIMESTAMP, true, $6, $7, $8, $9)
+      VALUES ($1, $2, $3, $4, 'matched', $5, $6, true, CURRENT_TIMESTAMP, true, $7, $8, $9, $10, CURRENT_TIMESTAMP + ($11 || ' days')::interval)
       RETURNING *
     `, [
-      activityId, userId, amount, paymentMethod || 'Manual Entry',
+      activityId, userId, matchedPackageId, amount, paymentMethod || 'Manual Entry',
       paymentDeadline, matchedWithName, matchedWithEmail || '',
-      matchedWithPhone || '', paymentAccount || ''
+      matchedWithPhone || '', paymentAccount || '', matchedDuration
     ]);
 
     res.json({ 
