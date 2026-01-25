@@ -503,7 +503,30 @@ export const UserDashboard: React.FC = () => {
         </div>
 
         {/* Payment Match Card - Shows when user is matched for payment */}
-        <PaymentMatchCard />
+        {paymentMatch && paymentMatch.status !== 'completed' && <PaymentMatchCard />}
+
+        {/* After Payment Confirmed - Show Package Subscription & Maturity */}
+        {paymentMatch && paymentMatch.status === 'completed' && selectedOfferPackage && (
+          <div className="mb-12 p-6 bg-gradient-to-r from-emerald-500/20 to-teal-500/20 border border-emerald-500/50 rounded-lg backdrop-blur-sm">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <span className="text-4xl">{selectedOfferPackage.icon}</span>
+                <div>
+                  <p className="text-emerald-400 text-sm font-semibold">Active Package</p>
+                  <p className="text-white text-2xl font-bold">{selectedOfferPackage.name}</p>
+                  <p className="text-emerald-300 text-lg">₵{selectedOfferPackage.amount.toLocaleString()}</p>
+                </div>
+              </div>
+              <div className="text-right">
+                <p className="text-slate-400 text-sm">Expected Return</p>
+                <p className="text-emerald-400 font-bold text-2xl">
+                  ₵{Math.round(selectedOfferPackage.amount * selectedOfferPackage.returnPercentage / 100).toLocaleString()}
+                </p>
+                <p className="text-slate-400 text-sm mt-2">{selectedOfferPackage.durationDays} days</p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Active Help Requests - Persistent Status Display */}
         <div className="grid md:grid-cols-2 gap-6 mb-12">
@@ -699,19 +722,23 @@ export const UserDashboard: React.FC = () => {
                         <p className="text-white text-sm"><span className="text-slate-400">Name:</span> {paymentMatch.bank_details.account_name}</p>
                       </div>
                     )}
-                    <p className="text-emerald-400 font-bold text-lg">Expected Amount: ${paymentMatch.amount}</p>
+                    <p className="text-emerald-400 font-bold text-lg">Expected Amount: ₵{paymentMatch.amount.toLocaleString()}</p>
                     <button
                       onClick={async () => {
                         if (confirm('Have you received the payment from the giver?')) {
                           try {
-                            await axios.post(
+                            const response = await axios.post(
                               `${API_URL}/api/user/payment-confirm`,
                               { matchId: paymentMatch.id },
                               { headers: { Authorization: `Bearer ${token}` } }
                             );
-                            alert('Payment confirmation sent! Admin will verify.');
-                          } catch (error) {
-                            alert('Failed to confirm payment. Please try again.');
+                            if (response.data.success) {
+                              setToast({ message: 'Payment received confirmed! Pending admin verification.', type: 'success' });
+                              setTimeout(() => fetchPaymentMatchData(), 2000);
+                            }
+                          } catch (error: any) {
+                            const errorMsg = error.response?.data?.error || 'Failed to confirm payment. Please try again.';
+                            setToast({ message: errorMsg, type: 'error' });
                           }
                         }
                       }}

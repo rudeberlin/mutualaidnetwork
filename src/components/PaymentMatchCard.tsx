@@ -5,7 +5,7 @@ import axios from 'axios';
 import { useAuthStore } from '../store';
 
 interface PaymentMatch {
-  id: number;
+  id: string | number;
   role: 'giver' | 'receiver';
   amount: number;
   payment_deadline: string;
@@ -51,7 +51,7 @@ export const PaymentMatchCard: React.FC = () => {
 
       const normalized: PaymentMatch = {
         role: payload.role,
-        id: payload.match.id,
+        id: String(payload.match.id),
         amount: Number(payload.match.amount),
         payment_deadline: payload.match.payment_deadline,
         status: payload.match.status,
@@ -162,7 +162,7 @@ export const PaymentMatchCard: React.FC = () => {
       {/* Amount */}
       <div className="mb-6 p-4 bg-gradient-to-r from-emerald-500/10 to-blue-500/10 rounded-lg border border-emerald-500/20">
         <p className="text-sm text-slate-400 mb-1">Amount</p>
-        <p className="text-3xl font-bold text-white">₦{match.amount.toLocaleString()}</p>
+        <p className="text-3xl font-bold text-white">₵{match.amount.toLocaleString()}</p>
       </div>
 
       {/* User Details */}
