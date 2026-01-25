@@ -408,20 +408,26 @@ export const UserDashboard: React.FC = () => {
           <div className="flex gap-3">
             <button
               onClick={handleOfferHelp}
-              className="flex items-center gap-2 px-6 py-3 bg-white text-slate-900 font-semibold rounded-lg hover:bg-slate-100 transition-all shadow-lg"
+              disabled={!!offerHelpStatus || !!receiveHelpStatus}
+              className={`flex items-center gap-2 px-6 py-3 font-semibold rounded-lg transition-all shadow-lg ${
+                (offerHelpStatus || receiveHelpStatus)
+                  ? 'bg-slate-400 text-gray-600 cursor-not-allowed opacity-50'
+                  : 'bg-white text-slate-900 hover:bg-slate-100'
+              }`}
+              title={(offerHelpStatus || receiveHelpStatus) ? 'You can only have one active package at a time' : ''}
             >
               <Hand size={20} />
               Offer Help
             </button>
             <button
               onClick={handleReceiveHelp}
-              disabled={!offerHelpStatus}
+              disabled={!offerHelpStatus || !!receiveHelpStatus}
               className={`flex items-center gap-2 px-6 py-3 font-semibold rounded-lg transition-all ${
-                !offerHelpStatus 
-                  ? 'bg-slate-500 text-gray-300 cursor-not-allowed opacity-50' 
+                !offerHelpStatus || !!receiveHelpStatus
+                  ? 'bg-slate-500 text-gray-300 cursor-not-allowed opacity-50'
                   : 'bg-emerald-500 text-white hover:bg-emerald-600'
               }`}
-              title={!offerHelpStatus ? 'Offer help first before requesting help' : ''}
+              title={!offerHelpStatus ? 'Offer help first before requesting help' : !!receiveHelpStatus ? 'You can only have one active package at a time' : ''}
             >
               <Hand size={20} />
               Receive Help
@@ -530,7 +536,7 @@ export const UserDashboard: React.FC = () => {
                   <span className="text-2xl">{selectedOfferPackage.icon}</span>
                   <div>
                     <p className="text-white font-semibold">{selectedOfferPackage.name}</p>
-                    <p className="text-emerald-400 font-bold text-lg">${selectedOfferPackage.amount}</p>
+                    <p className="text-emerald-400 font-bold text-lg">₵{selectedOfferPackage.amount.toLocaleString()}</p>
                     <p className="text-slate-400 text-xs">ROI: {selectedOfferPackage.returnPercentage}% • {selectedOfferPackage.durationDays} days</p>
                   </div>
                 </div>
@@ -542,7 +548,13 @@ export const UserDashboard: React.FC = () => {
                     <div className="w-3 h-3 bg-blue-500 rounded-full animate-pulse"></div>
                     <p className="text-white font-semibold">Processing</p>
                   </div>
-                  <p className="text-slate-400 text-sm">Your help request is being processed...</p>
+                  <p className="text-slate-400 text-sm mb-3">Your help request is being processed...</p>
+                  <div className="bg-blue-500/10 border border-blue-500/30 rounded p-3">
+                    <div className="flex items-center gap-2">
+                      <Clock className="text-blue-400" size={16} />
+                      <p className="text-blue-300 text-sm">Estimated time: 1-2 hours for admin review</p>
+                    </div>
+                  </div>
                 </div>
               )}
               {offerHelpStatus === 'pending' && (
@@ -553,7 +565,10 @@ export const UserDashboard: React.FC = () => {
                   </div>
                   <p className="text-slate-400 text-sm mb-3">Waiting for admin approval. This typically takes 1-2 hours.</p>
                   <div className="bg-yellow-500/10 border border-yellow-500/30 rounded p-3">
-                    <p className="text-yellow-300 text-xs">⏱️ Your request is in queue. Check back soon for updates.</p>
+                    <div className="flex items-center gap-2">
+                      <Clock className="text-yellow-300" size={16} />
+                      <p className="text-yellow-300 text-xs">Typical wait: 1-2 hours. Check back soon for updates.</p>
+                    </div>
                   </div>
                 </div>
               )}
@@ -637,7 +652,7 @@ export const UserDashboard: React.FC = () => {
                   <span className="text-2xl">{selectedReceivePackage.icon}</span>
                   <div>
                     <p className="text-white font-semibold">{selectedReceivePackage.name}</p>
-                    <p className="text-emerald-400 font-bold text-lg">${selectedReceivePackage.amount}</p>
+                    <p className="text-emerald-400 font-bold text-lg">₵{selectedReceivePackage.amount.toLocaleString()}</p>
                     <p className="text-slate-400 text-xs">ROI: {selectedReceivePackage.returnPercentage}% • {selectedReceivePackage.durationDays} days</p>
                   </div>
                 </div>
@@ -723,37 +738,6 @@ export const UserDashboard: React.FC = () => {
         <div className="grid lg:grid-cols-3 gap-8">
           {/* Transactions */}
           <div className="lg:col-span-2">
-            {/* Maturity Timer - Display when offer help is active */}
-            {(offerHelpStatus === 'processing' || offerHelpStatus === 'pending') && (
-              <div className="bg-gradient-to-r from-emerald-500/20 to-teal-500/20 border border-emerald-500/50 rounded-lg p-6 mb-6 backdrop-blur-sm">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <Clock className="text-emerald-400 animate-pulse" size={28} />
-                    <div>
-                      <p className="text-slate-300 text-sm">Maturity Timer</p>
-                      <p className="text-white font-bold text-2xl">
-                        {Math.floor(timeRemaining / 86400)}d {Math.floor((timeRemaining % 86400) / 3600)}h {Math.floor((timeRemaining % 3600) / 60)}m
-                      </p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-slate-400 text-sm">Expected Return</p>
-                    <p className="text-emerald-400 font-bold text-xl">
-                      ₵{selectedOfferPackage ? Math.round(selectedOfferPackage.amount * selectedOfferPackage.returnPercentage / 100).toLocaleString() : 0}
-                    </p>
-                  </div>
-                </div>
-                <div className="mt-4 w-full bg-slate-700/50 rounded-full h-2 overflow-hidden">
-                  <div 
-                    className="bg-gradient-to-r from-emerald-500 to-teal-500 h-full transition-all duration-1000"
-                    style={{
-                      width: `${(timeRemaining / (selectedOfferPackage?.durationDays || 5) / 86400) * 100}%`
-                    }}
-                  ></div>
-                </div>
-              </div>
-            )}
-
             <div className="bg-gradient-to-br from-slate-800/40 to-slate-900/40 border border-slate-700/50 rounded-lg p-8 backdrop-blur-sm">
               <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-2">
                 <div className="w-1 h-8 bg-gradient-to-b from-emerald-500 to-teal-500 rounded-full"></div>
