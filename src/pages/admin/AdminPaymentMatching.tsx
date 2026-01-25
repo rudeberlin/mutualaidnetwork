@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { useAuthStore } from '../../store';
 import { Toast } from '../../components/Toast';
@@ -42,13 +42,15 @@ interface PaymentMatch {
   created_at: string;
 }
 
+type AssignModalState = { type: 'receiver'; data: PendingReceiver } | { type: 'giver'; data: AvailableGiver } | null;
+
 export const AdminPaymentMatching: React.FC = () => {
   const [pendingReceivers, setPendingReceivers] = useState<PendingReceiver[]>([]);
   const [availableGivers, setAvailableGivers] = useState<AvailableGiver[]>([]);
   const [matches, setMatches] = useState<PaymentMatch[]>([]);
   const [selectedReceiver, setSelectedReceiver] = useState<PendingReceiver | null>(null);
   const [selectedGiver, setSelectedGiver] = useState<AvailableGiver | null>(null);
-  const [showAssignModal, setShowAssignModal] = useState<{ type: 'receiver' | 'giver'; data: any } | null>(null);
+  const [showAssignModal, setShowAssignModal] = useState<AssignModalState>(null);
   const [showManualEntryModal, setShowManualEntryModal] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const { token } = useAuthStore();
@@ -64,7 +66,7 @@ export const AdminPaymentMatching: React.FC = () => {
   });
   const [requiredFieldErrors, setRequiredFieldErrors] = useState<Set<string>>(new Set());
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       const [receiversRes, giversRes, matchesRes] = await Promise.all([
         axios.get(`${API_URL}/api/admin/pending-receivers`, {
@@ -84,13 +86,16 @@ export const AdminPaymentMatching: React.FC = () => {
     } catch (error) {
       console.error('Failed to fetch matching data:', error);
     }
-  };
+  }, [token]);
 
   useEffect(() => {
-    fetchData();
+    const load = async () => {
+      await fetchData();
+    };
+    load();
     const interval = setInterval(fetchData, 10000); // Refresh every 10s
     return () => clearInterval(interval);
-  }, [token]);
+  }, [fetchData]);
 
   const handleCreateMatch = async () => {
     if (!selectedReceiver || !selectedGiver) return;
@@ -111,9 +116,13 @@ export const AdminPaymentMatching: React.FC = () => {
       setSelectedReceiver(null);
       setSelectedGiver(null);
       fetchData();
-    } catch (error: any) {
-      const errorMsg = error.response?.data?.error || 'Failed to create match';
-      setToast({ message: errorMsg, type: 'error' });
+    } catch (error: unknown) {
+      if (axios.isAxiosError(error)) {
+        const errorMsg = error.response?.data?.error || error.message || 'Failed to create match';
+        setToast({ message: errorMsg, type: 'error' });
+      } else {
+        setToast({ message: 'Failed to create match', type: 'error' });
+      }
     }
   };
 
@@ -126,9 +135,13 @@ export const AdminPaymentMatching: React.FC = () => {
       );
       setToast({ message: 'Payment confirmed successfully', type: 'success' });
       fetchData();
-    } catch (error: any) {
-      const errorMsg = error.response?.data?.error || 'Failed to confirm payment';
-      setToast({ message: errorMsg, type: 'error' });
+    } catch (error: unknown) {
+      if (axios.isAxiosError(error)) {
+        const errorMsg = error.response?.data?.error || error.message || 'Failed to confirm payment';
+        setToast({ message: errorMsg, type: 'error' });
+      } else {
+        setToast({ message: 'Failed to confirm payment', type: 'error' });
+      }
     }
   };
 
@@ -146,9 +159,13 @@ export const AdminPaymentMatching: React.FC = () => {
       );
       setToast({ message: `User ${userName} has been banned`, type: 'success' });
       fetchData();
-    } catch (error: any) {
-      const errorMsg = error.response?.data?.error || 'Failed to ban user';
-      setToast({ message: errorMsg, type: 'error' });
+    } catch (error: unknown) {
+      if (axios.isAxiosError(error)) {
+        const errorMsg = error.response?.data?.error || error.message || 'Failed to ban user';
+        setToast({ message: errorMsg, type: 'error' });
+      } else {
+        setToast({ message: 'Failed to ban user', type: 'error' });
+      }
     }
   };
 
@@ -191,9 +208,13 @@ export const AdminPaymentMatching: React.FC = () => {
       });
       setRequiredFieldErrors(new Set());
       fetchData();
-    } catch (error: any) {
-      const errorMsg = error.response?.data?.error || 'Failed to create manual match';
-      setToast({ message: errorMsg, type: 'error' });
+    } catch (error: unknown) {
+      if (axios.isAxiosError(error)) {
+        const errorMsg = error.response?.data?.error || error.message || 'Failed to create manual match';
+        setToast({ message: errorMsg, type: 'error' });
+      } else {
+        setToast({ message: 'Failed to create manual match', type: 'error' });
+      }
     }
   };
 

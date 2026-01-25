@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { useAuthStore } from '../../store';
 import { Toast } from '../../components/Toast';
@@ -31,7 +31,7 @@ export const AdminUserPackages: React.FC = () => {
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const { token } = useAuthStore();
 
-  const fetchPackages = async () => {
+  const fetchPackages = useCallback(async () => {
     try {
       const response = await axios.get(`${API_URL}/api/admin/user-packages`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -44,11 +44,11 @@ export const AdminUserPackages: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [token]);
 
   useEffect(() => {
     fetchPackages();
-  }, [token]);
+  }, [fetchPackages]);
 
   const handleApprove = async (id: number) => {
     const maturity = new Date();
@@ -62,9 +62,13 @@ export const AdminUserPackages: React.FC = () => {
       );
       setToast({ message: `Package approved for ${packages.find(p => p.id === id)?.full_name}`, type: 'success' });
       fetchPackages();
-    } catch (error: any) {
-      const errorMsg = error.response?.data?.error || 'Failed to approve package';
-      setToast({ message: errorMsg, type: 'error' });
+    } catch (error: unknown) {
+      if (axios.isAxiosError(error)) {
+        const errorMsg = error.response?.data?.error || error.message || 'Failed to approve package';
+        setToast({ message: errorMsg, type: 'error' });
+      } else {
+        setToast({ message: 'Failed to approve package', type: 'error' });
+      }
     }
   };
 
@@ -77,9 +81,13 @@ export const AdminUserPackages: React.FC = () => {
       );
       setToast({ message: `Package rejected`, type: 'success' });
       fetchPackages();
-    } catch (error: any) {
-      const errorMsg = error.response?.data?.error || 'Failed to reject package';
-      setToast({ message: errorMsg, type: 'error' });
+    } catch (error: unknown) {
+      if (axios.isAxiosError(error)) {
+        const errorMsg = error.response?.data?.error || error.message || 'Failed to reject package';
+        setToast({ message: errorMsg, type: 'error' });
+      } else {
+        setToast({ message: 'Failed to reject package', type: 'error' });
+      }
     }
   };
 
@@ -96,9 +104,13 @@ export const AdminUserPackages: React.FC = () => {
       setSelectedPackage(null);
       setNewMaturityDate('');
       fetchPackages();
-    } catch (error: any) {
-      const errorMsg = error.response?.data?.error || 'Failed to extend package';
-      setToast({ message: errorMsg, type: 'error' });
+    } catch (error: unknown) {
+      if (axios.isAxiosError(error)) {
+        const errorMsg = error.response?.data?.error || error.message || 'Failed to extend package';
+        setToast({ message: errorMsg, type: 'error' });
+      } else {
+        setToast({ message: 'Failed to extend package', type: 'error' });
+      }
     }
   };
 
@@ -111,9 +123,13 @@ export const AdminUserPackages: React.FC = () => {
       );
       setToast({ message: `Package reset to pending`, type: 'success' });
       fetchPackages();
-    } catch (error: any) {
-      const errorMsg = error.response?.data?.error || 'Failed to reset package';
-      setToast({ message: errorMsg, type: 'error' });
+    } catch (error: unknown) {
+      if (axios.isAxiosError(error)) {
+        const errorMsg = error.response?.data?.error || error.message || 'Failed to reset package';
+        setToast({ message: errorMsg, type: 'error' });
+      } else {
+        setToast({ message: 'Failed to reset package', type: 'error' });
+      }
     }
   };
 

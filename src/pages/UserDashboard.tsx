@@ -8,6 +8,43 @@ import { Toast } from '../components/Toast';
 import { PACKAGES, MOCK_CURRENT_USER, MOCK_TRANSACTIONS } from '../utils/mockData';
 import { useAuthStore } from '../store';
 import type { Package } from '../types';
+import type { AxiosError } from 'axios';
+
+type HelpStatus = 'processing' | 'pending' | 'matched';
+
+type MatchRole = 'giver' | 'receiver';
+
+interface PaymentMatchState {
+  id: string | number;
+  amount: number;
+  payment_deadline: string;
+  status: string;
+  role: MatchRole;
+  matched_user_name: string;
+  matched_user_phone: string;
+  bank_details: {
+    account_name?: string;
+    account_number?: string;
+    bank_name?: string;
+  } | null;
+}
+
+interface ActivePackage {
+  package_name: string;
+  amount: number;
+  return_percentage: number;
+  duration_days: number;
+  subscribed_at: string;
+  status: string;
+}
+
+const parseStoredHelpStatus = (key: string): HelpStatus | null => {
+  const stored = localStorage.getItem(key);
+  if (stored === 'processing' || stored === 'pending' || stored === 'matched') {
+    return stored;
+  }
+  return null;
+};
 import { Settings, CreditCard, ArrowUpRight, ArrowDownLeft, TrendingUp, Plus, Hand, X, Check, Clock, Copy, Share2 } from 'lucide-react';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
@@ -26,12 +63,8 @@ export const UserDashboard: React.FC = () => {
     const saved = localStorage.getItem('selectedReceivePackage');
     return saved ? JSON.parse(saved) : null;
   });
-  const [offerHelpStatus, setOfferHelpStatus] = useState<'processing' | 'pending' | 'matched' | null>(() => {
-    return localStorage.getItem('offerHelpStatus') as any || null;
-  });
-  const [receiveHelpStatus, setReceiveHelpStatus] = useState<'processing' | 'pending' | 'matched' | null>(() => {
-    return localStorage.getItem('receiveHelpStatus') as any || null;
-  });
+  const [offerHelpStatus, setOfferHelpStatus] = useState<HelpStatus | null>(() => parseStoredHelpStatus('offerHelpStatus'));
+  const [receiveHelpStatus, setReceiveHelpStatus] = useState<HelpStatus | null>(() => parseStoredHelpStatus('receiveHelpStatus'));
   const [transactionIndex, setTransactionIndex] = useState(0);
   const [timeRemaining, setTimeRemaining] = useState(() => {
     const saved = localStorage.getItem('timeRemaining');
@@ -41,7 +74,8 @@ export const UserDashboard: React.FC = () => {
     JSON.parse(localStorage.getItem('referralCodes') || '[]')
   );
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
-  const [paymentMatch, setPaymentMatch] = useState<any>(null);
+  const [paymentMatch, setPaymentMatch] = useState<PaymentMatchState | null>(null);
+  const [hasFetchedMatch, setHasFetchedMatch] = useState(false);
   const transactionContainerRef = useRef<HTMLDivElement>(null);
   const { user, token, initializeFromStorage } = useAuthStore();
   const currentUser = user || MOCK_CURRENT_USER;
@@ -137,6 +171,8 @@ export const UserDashboard: React.FC = () => {
     } catch (error) {
       console.error('Failed to fetch payment match:', error);
       setPaymentMatch(null);
+    } finally {
+      setHasFetchedMatch(true);
     }
   }, [user?.id, token, offerHelpStatus, receiveHelpStatus, selectedOfferPackage]);
 
@@ -154,7 +190,7 @@ export const UserDashboard: React.FC = () => {
     helpProvidedCount: 0,
     daysSinceRegistration: 0,
     registrationDate: null as Date | null,
-    activePackages: [] as any[]
+    activePackages: [] as ActivePackage[]
   });
   const [loadingStats, setLoadingStats] = useState(true);
 
@@ -181,18 +217,18 @@ export const UserDashboard: React.FC = () => {
     fetchDashboardStats();
   }, [user?.id, token]);
 
-  // Monitor activePackagesCount and clear states when no active packages
+  // Monitor activePackagesCount and clear state only after a completed cycle (matched → completed)
   useEffect(() => {
-    // If user has no active packages and offerHelpStatus is set, clear it
-    if (dashboardStats.activePackagesCount === 0 && offerHelpStatus !== null) {
-      console.log('No active packages detected, clearing offer help status');
+    // Only clear when there are no active packages AND no match data after we have fetched both stats and matches.
+    // Prevents the Offering Help panel from disappearing while a match is still being fetched or processed.
+    if (!loadingStats && hasFetchedMatch && dashboardStats.activePackagesCount === 0 && offerHelpStatus === 'matched' && !paymentMatch) {
       setOfferHelpStatus(null);
       setSelectedOfferPackage(null);
       setPaymentMatch(null);
       localStorage.removeItem('offerHelpStatus');
       localStorage.removeItem('selectedOfferPackage');
     }
-  }, [dashboardStats.activePackagesCount, offerHelpStatus]);
+  }, [dashboardStats.activePackagesCount, offerHelpStatus, paymentMatch, loadingStats, hasFetchedMatch]);
 
   // Auto-scroll transactions - vertical sliding
   useEffect(() => {
@@ -285,8 +321,9 @@ export const UserDashboard: React.FC = () => {
           setShowPackageSelection(false);
         }
       }
-    } catch (error: any) {
-      const errorMsg = error.response?.data?.error || 'Failed to register for help';
+    } catch (error: unknown) {
+      const err = error as AxiosError<{ error?: string }>;
+      const errorMsg = err.response?.data?.error || err.message || 'Failed to register for help';
       alert(errorMsg);
     }
   };
@@ -432,9 +469,9 @@ export const UserDashboard: React.FC = () => {
           <div className="flex gap-3">
             <button
               onClick={handleOfferHelp}
-              disabled={!currentUser.isVerified || !!offerHelpStatus || dashboardStats.activePackagesCount > 0}
+              disabled={!currentUser.isVerified || offerHelpStatus !== null || dashboardStats.activePackagesCount > 0}
               className={`flex items-center gap-2 px-6 py-3 font-semibold rounded-lg transition-all shadow-lg ${
-                (!currentUser.isVerified || !!offerHelpStatus || dashboardStats.activePackagesCount > 0)
+                (!currentUser.isVerified || offerHelpStatus !== null || dashboardStats.activePackagesCount > 0)
                   ? 'bg-slate-400 text-gray-600 cursor-not-allowed opacity-50'
                   : 'bg-white text-slate-900 hover:bg-slate-100'
               }`}
@@ -451,13 +488,13 @@ export const UserDashboard: React.FC = () => {
             </button>
             <button
               onClick={handleReceiveHelp}
-              disabled={!offerHelpStatus || !!receiveHelpStatus}
+              disabled={!offerHelpStatus || receiveHelpStatus !== null}
               className={`flex items-center gap-2 px-6 py-3 font-semibold rounded-lg transition-all ${
-                !offerHelpStatus || !!receiveHelpStatus
+                !offerHelpStatus || receiveHelpStatus !== null
                   ? 'bg-slate-500 text-gray-300 cursor-not-allowed opacity-50'
                   : 'bg-emerald-500 text-white hover:bg-emerald-600'
               }`}
-              title={!offerHelpStatus ? 'Offer help first before requesting help' : !!receiveHelpStatus ? 'You can only have one active package at a time' : ''}
+              title={!offerHelpStatus ? 'Offer help first before requesting help' : receiveHelpStatus !== null ? 'You can only have one active package at a time' : ''}
             >
               <Hand size={20} />
               Receive Help
@@ -658,8 +695,9 @@ export const UserDashboard: React.FC = () => {
                               setToast({ message: 'Payment confirmed! Pending admin approval. Countdown will start after verification.', type: 'success' });
                               setTimeout(() => fetchPaymentMatchData(), 2000);
                             }
-                          } catch (error: any) {
-                            const errorMsg = error.response?.data?.error || 'Failed to confirm payment. Please try again.';
+                          } catch (error: unknown) {
+                            const err = error as AxiosError<{ error?: string }>;
+                            const errorMsg = err.response?.data?.error || err.message || 'Failed to confirm payment. Please try again.';
                             setToast({ message: errorMsg, type: 'error' });
                           }
                         }
@@ -765,8 +803,9 @@ export const UserDashboard: React.FC = () => {
                               setToast({ message: 'Payment received confirmed! Pending admin verification.', type: 'success' });
                               setTimeout(() => fetchPaymentMatchData(), 2000);
                             }
-                          } catch (error: any) {
-                            const errorMsg = error.response?.data?.error || 'Failed to confirm payment. Please try again.';
+                          } catch (error: unknown) {
+                            const err = error as AxiosError<{ error?: string }>;
+                            const errorMsg = err.response?.data?.error || err.message || 'Failed to confirm payment. Please try again.';
                             setToast({ message: errorMsg, type: 'error' });
                           }
                         }
@@ -899,7 +938,7 @@ export const UserDashboard: React.FC = () => {
               
               <div className="space-y-3">
                 {dashboardStats.activePackages && dashboardStats.activePackages.length > 0 ? (
-                  dashboardStats.activePackages.map((pkg: any, idx: number) => {
+                  dashboardStats.activePackages.map((pkg: ActivePackage, idx: number) => {
                     // Calculate progress based on package duration
                     const packageDurationMs = pkg.duration_days * 24 * 60 * 60 * 1000;
                     const startTime = new Date(pkg.subscribed_at).getTime();

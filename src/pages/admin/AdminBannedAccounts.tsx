@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { useAuthStore } from '../../store';
 import { Toast } from '../../components/Toast';
@@ -25,7 +25,7 @@ export const AdminBannedAccounts: React.FC = () => {
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const { token } = useAuthStore();
 
-  const fetchBannedAccounts = async () => {
+  const fetchBannedAccounts = useCallback(async () => {
     try {
       const response = await axios.get(`${API_URL}/api/admin/banned-accounts`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -38,11 +38,11 @@ export const AdminBannedAccounts: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [token]);
 
   useEffect(() => {
     fetchBannedAccounts();
-  }, [token]);
+  }, [fetchBannedAccounts]);
 
   const handleUnban = async (id: number, userName: string) => {
     if (!confirm(`Unban ${userName} and restore account access?`)) return;
@@ -55,9 +55,13 @@ export const AdminBannedAccounts: React.FC = () => {
       );
       setToast({ message: `User ${userName} has been unbanned`, type: 'success' });
       fetchBannedAccounts();
-    } catch (error: any) {
-      const errorMsg = error.response?.data?.error || 'Failed to unban user';
-      setToast({ message: errorMsg, type: 'error' });
+    } catch (error: unknown) {
+      if (axios.isAxiosError(error)) {
+        const errorMsg = error.response?.data?.error || error.message || 'Failed to unban user';
+        setToast({ message: errorMsg, type: 'error' });
+      } else {
+        setToast({ message: 'Failed to unban user', type: 'error' });
+      }
     }
   };
 

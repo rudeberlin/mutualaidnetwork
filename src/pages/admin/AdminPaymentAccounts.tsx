@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import axios from 'axios';
 import { useAuthStore } from '../../store';
 import { Search, Edit2, Save, X, CreditCard, Phone } from 'lucide-react';
@@ -50,7 +50,7 @@ export const AdminPaymentAccounts: React.FC = () => {
     );
   }, [accounts, search]);
 
-  const loadAccounts = async (query?: string) => {
+  const loadAccounts = useCallback(async (query?: string) => {
     if (!token) return;
     setLoading(true);
     setError(null);
@@ -67,11 +67,11 @@ export const AdminPaymentAccounts: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [token]);
 
   useEffect(() => {
     loadAccounts();
-  }, [token]);
+  }, [loadAccounts]);
 
   const openModal = (row: PaymentAccountRow, mode: 'give' | 'receive') => {
     setSelected(row);

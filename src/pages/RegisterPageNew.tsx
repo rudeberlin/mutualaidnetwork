@@ -166,9 +166,15 @@ export const RegisterPageNew: React.FC = () => {
       } else {
         setErrors({ submit: response.data?.error || 'Registration failed. Please try again.' });
       }
-    } catch (err: any) {
-      const message = err?.response?.data?.error || 'Registration failed. Please try again.';
-      setErrors({ submit: message });
+    } catch (err: unknown) {
+      if (axios.isAxiosError(err)) {
+        const message = err.response?.data?.error || err.message || 'Registration failed. Please try again.';
+        setErrors({ submit: message });
+      } else if (err instanceof Error) {
+        setErrors({ submit: err.message });
+      } else {
+        setErrors({ submit: 'Registration failed. Please try again.' });
+      }
     } finally {
       setIsLoading(false);
     }

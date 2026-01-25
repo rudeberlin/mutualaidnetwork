@@ -128,10 +128,16 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ user, onClose, onS
       setTimeout(() => {
         onClose();
       }, 1500);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Settings save error:', error);
-      const errorMsg = error.response?.data?.error || error.message || 'Failed to save settings';
-      setErrorMessage(errorMsg);
+      if (axios.isAxiosError(error)) {
+        const errorMsg = error.response?.data?.error || error.message || 'Failed to save settings';
+        setErrorMessage(errorMsg);
+      } else if (error instanceof Error) {
+        setErrorMessage(error.message);
+      } else {
+        setErrorMessage('Failed to save settings');
+      }
     } finally {
       setLoading(false);
     }

@@ -65,13 +65,14 @@ class ImageHandlerService {
         filename: data.data.filename,
         size: data.data.size,
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Upload error';
       return {
         success: false,
         path: '',
         filename: '',
         size: 0,
-        error: error.message || 'Upload error',
+        error: message,
       };
     }
   }

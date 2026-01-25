@@ -34,9 +34,13 @@ export const AdminUsers: React.FC = () => {
           window.location.reload();
         }, 1500);
       }
-    } catch (error: any) {
-      const errorMsg = error.response?.data?.error || 'Failed to delete user';
-      setToast({ message: errorMsg, type: 'error' });
+    } catch (error: unknown) {
+      if (axios.isAxiosError(error)) {
+        const errorMsg = error.response?.data?.error || error.message || 'Failed to delete user';
+        setToast({ message: errorMsg, type: 'error' });
+      } else {
+        setToast({ message: 'Failed to delete user', type: 'error' });
+      }
     } finally {
       setDeleting(false);
     }

@@ -47,8 +47,14 @@ export const LoginPage: React.FC = () => {
           navigate('/dashboard');
         }
       }
-    } catch (err: any) {
-      setError(err.response?.data?.error || 'Login failed. Please try again.');
+    } catch (err: unknown) {
+      if (axios.isAxiosError(err)) {
+        setError(err.response?.data?.error || err.message || 'Login failed. Please try again.');
+      } else if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError('Login failed. Please try again.');
+      }
       setIsLoading(false);
     }
   };

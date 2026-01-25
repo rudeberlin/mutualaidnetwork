@@ -11,6 +11,72 @@ import type {
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
+interface RawUser {
+  id: string;
+  full_name: string;
+  username: string;
+  email: string;
+  phone_number: string;
+  country: string;
+  role: string;
+  is_verified: boolean;
+  payment_method_verified: boolean;
+  total_earnings?: number | string;
+  created_at: string;
+  updated_at?: string;
+  id_front_image?: string;
+  id_back_image?: string;
+  id_verified?: boolean;
+}
+
+interface RawVerification {
+  id: string;
+  user_name: string;
+  email: string;
+  id_front_image?: string;
+  id_back_image?: string;
+  submitted_at: string;
+}
+
+interface RawActivity {
+  id: string;
+  giver_id?: string;
+  receiver_id?: string;
+  package_id: string;
+  amount: number | string;
+  created_at: string;
+  status: string;
+}
+
+interface RawPayment {
+  id: string;
+  user_id?: string;
+  type?: string;
+  verified?: boolean;
+  added_at: string;
+  active?: boolean;
+}
+
+interface RawTransaction {
+  id: string;
+  user_id?: string;
+  type: string;
+  amount: number | string;
+  currency?: string;
+  status: string;
+  created_at: string;
+}
+
+interface RawPackage {
+  id: string;
+  name: string;
+  amount: number | string;
+  return_percentage: number;
+  duration_days: number;
+  description?: string;
+  active?: boolean;
+}
+
 // Create axios instance with auth token
 const api = axios.create({
   baseURL: API_URL,
@@ -28,18 +94,18 @@ api.interceptors.request.use((config) => {
 export const adminService = {
   async fetchUsers(): Promise<User[]> {
     const response = await api.get('/api/admin/users');
-    const users = response.data.data || [];
-    return users.map((u: any) => ({
+    const users = (response.data.data || []) as RawUser[];
+    return users.map((u) => ({
       id: u.id,
       fullName: u.full_name,
       username: u.username,
       email: u.email,
       phoneNumber: u.phone_number,
       country: u.country,
-      role: u.role,
+      role: (u.role === 'admin' ? 'admin' : 'member') as User['role'],
       isVerified: u.is_verified,
       paymentMethodVerified: u.payment_method_verified,
-      totalEarnings: parseFloat(u.total_earnings || 0),
+      totalEarnings: Number(u.total_earnings || 0),
       createdAt: new Date(u.created_at),
       updatedAt: new Date(u.updated_at || u.created_at),
       idDocuments: {
@@ -53,18 +119,18 @@ export const adminService = {
 
   async fetchVerifications(): Promise<AdminVerification[]> {
     const response = await api.get('/api/admin/verifications');
-    const verifications = response.data.data || [];
+    const verifications = (response.data.data || []) as RawVerification[];
     
     // Transform backend data to match frontend format
-    return verifications.map((v: any) => ({
+    return verifications.map((v) => ({
       id: v.id,
       userId: v.id,
       fullName: v.user_name,
       username: v.email.split('@')[0],
       profilePhoto: `https://api.dicebear.com/7.x/avataaars/svg?seed=${v.user_name}`,
       idType: 'ID Card',
-      frontImage: v.id_front_image?.startsWith('/') ? `${API_URL}${v.id_front_image}` : v.id_front_image,
-      backImage: v.id_back_image?.startsWith('/') ? `${API_URL}${v.id_back_image}` : v.id_back_image,
+      frontImage: v.id_front_image?.startsWith('/') ? `${API_URL}${v.id_front_image}` : v.id_front_image || '',
+      backImage: v.id_back_image?.startsWith('/') ? `${API_URL}${v.id_back_image}` : v.id_back_image || '',
       status: 'Pending',
       submittedAt: new Date(v.submitted_at),
     }));
@@ -82,18 +148,27 @@ export const adminService = {
 
   async fetchHelpActivities(): Promise<AdminHelpActivity[]> {
     const response = await api.get('/api/admin/help-activities');
-    const activities = response.data.data || [];
+    const activities = (response.data.data || []) as RawActivity[];
     
-    return activities.map((a: any) => ({
+    return activities.map((a) => {
+      const statusMap: Record<string, AdminHelpActivity['status']> = {
+        pending: 'Pending',
+        active: 'Active',
+        completed: 'Completed',
+        disputed: 'Disputed',
+      };
+
+      return {
       id: a.id,
       giverName: 'User ' + a.giver_id?.substring(0, 8),
       receiverName: a.receiver_id ? 'User ' + a.receiver_id.substring(0, 8) : 'N/A',
       packageName: a.package_id,
-      amount: parseFloat(a.amount),
+        amount: Number(a.amount),
       startDate: new Date(a.created_at),
       dueDate: new Date(a.created_at),
-      status: a.status.charAt(0).toUpperCase() + a.status.slice(1),
-    }));
+        status: statusMap[a.status] || 'Pending',
+      };
+    });
   },
 
   async completeHelpActivity(id: string) {
@@ -108,17 +183,27 @@ export const adminService = {
 
   async fetchPayments(): Promise<AdminPayment[]> {
     const response = await api.get('/api/admin/payments');
-    const payments = response.data.data || [];
+    const payments = (response.data.data || []) as RawPayment[];
     
-    return payments.map((p: any) => ({
+    return payments.map((p) => {
+      const method: AdminPayment['method'] = p.type === 'Mobile Money'
+        ? 'Mobile Money'
+        : p.type === 'Bank'
+        ? 'Bank'
+        : p.type === 'Card'
+        ? 'Card'
+        : 'BTC';
+      const status: AdminPayment['status'] = p.verified ? 'Confirmed' : 'Pending';
+      return {
       id: p.id,
       userName: 'User ' + p.user_id?.substring(0, 8),
-      method: p.type || 'Unknown',
+        method,
       maskedDetails: '****' + p.id.toString().slice(-4),
-      amount: 0,
-      status: p.verified ? 'Confirmed' : 'Pending',
+        amount: 0,
+        status,
       submittedAt: new Date(p.added_at),
-    }));
+      };
+    });
   },
 
   async verifyPayment(id: string) {
@@ -133,31 +218,39 @@ export const adminService = {
 
   async fetchTransactions(): Promise<AdminTransaction[]> {
     const response = await api.get('/api/admin/transactions');
-    const transactions = response.data.data || [];
+    const transactions = (response.data.data || []) as RawTransaction[];
     
-    return transactions.map((t: any) => ({
-      id: t.id,
-      userName: 'User ' + t.user_id?.substring(0, 8),
-      type: t.type,
-      amount: parseFloat(t.amount),
-      currency: t.currency || 'USD',
-      status: t.status.charAt(0).toUpperCase() + t.status.slice(1),
-      date: new Date(t.created_at),
-    }));
+    return transactions.map((t) => {
+      const type: AdminTransaction['type'] = t.type === 'Help Given' ? 'Help Given' : 'Help Received';
+      const status: AdminTransaction['status'] = t.status === 'completed'
+        ? 'Completed'
+        : t.status === 'failed'
+        ? 'Failed'
+        : 'Pending';
+      return {
+        id: t.id,
+        userName: 'User ' + t.user_id?.substring(0, 8),
+        type,
+        amount: Number(t.amount),
+        currency: t.currency || 'USD',
+        status,
+        date: new Date(t.created_at),
+      };
+    });
   },
 
   async fetchPackages(): Promise<AdminPackage[]> {
     const response = await api.get('/api/packages');
-    const packages = response.data.data || [];
+    const packages = (response.data.data || []) as RawPackage[];
     
-    return packages.map((p: any) => ({
+    return packages.map((p) => ({
       id: p.id,
       name: p.name,
-      amount: parseFloat(p.amount),
+      amount: Number(p.amount),
       returnPercentage: p.return_percentage,
       durationDays: p.duration_days,
       description: p.description,
-      active: p.active,
+      active: p.active ?? false,
     }));
   },
 

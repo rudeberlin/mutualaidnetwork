@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 import { useAuthStore } from '../store';
 
 const INACTIVITY_TIMEOUT = 10 * 60 * 1000; // 10 minutes in milliseconds
@@ -7,7 +7,7 @@ export const useAutoLogout = () => {
   const { isAuthenticated, logout } = useAuthStore();
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const resetTimer = () => {
+  const resetTimer = useCallback(() => {
     // Clear existing timeout
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
@@ -20,7 +20,7 @@ export const useAutoLogout = () => {
         alert('You have been logged out due to inactivity.');
       }
     }, INACTIVITY_TIMEOUT);
-  };
+  }, [isAuthenticated, logout]);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -47,5 +47,5 @@ export const useAutoLogout = () => {
         window.removeEventListener(event, resetTimer);
       });
     };
-  }, [isAuthenticated]);
+  }, [isAuthenticated, resetTimer]);
 };

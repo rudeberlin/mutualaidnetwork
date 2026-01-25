@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Clock, User, Phone, CreditCard, CheckCircle, AlertCircle } from 'lucide-react';
 import { differenceInHours, differenceInMinutes, format } from 'date-fns';
 import axios from 'axios';
@@ -26,13 +26,7 @@ export const PaymentMatchCard: React.FC = () => {
   const [confirming, setConfirming] = useState(false);
   const { user, token } = useAuthStore();
 
-  useEffect(() => {
-    fetchPaymentMatch();
-    const interval = setInterval(fetchPaymentMatch, 10000); // Refresh every 10 seconds
-    return () => clearInterval(interval);
-  }, [user?.id]);
-
-  const fetchPaymentMatch = async () => {
+  const fetchPaymentMatch = useCallback(async () => {
     if (!user?.id || !token) return;
     
     try {
@@ -60,15 +54,25 @@ export const PaymentMatchCard: React.FC = () => {
       };
 
       setMatch(normalized);
-    } catch (error: any) {
-      if (error.response?.status !== 404) {
+    } catch (error: unknown) {
+      if (axios.isAxiosError(error)) {
+        if (error.response?.status !== 404) {
+          console.error('Error fetching payment match:', error);
+        }
+      } else {
         console.error('Error fetching payment match:', error);
       }
       setMatch(null);
     } finally {
       setLoading(false);
     }
-  };
+  }, [token, user?.id]);
+
+  useEffect(() => {
+    fetchPaymentMatch();
+    const interval = setInterval(fetchPaymentMatch, 10000); // Refresh every 10 seconds
+    return () => clearInterval(interval);
+  }, [fetchPaymentMatch]);
 
   const handleConfirmPayment = async () => {
     if (!token || !match) return;
