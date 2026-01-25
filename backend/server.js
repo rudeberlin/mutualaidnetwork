@@ -1379,6 +1379,51 @@ app.get('/api/user/:userId/payment-match', authenticateToken, async (req, res) =
       });
     }
 
+    // Check for manual entry matches in help_activities
+    const manualMatch = await pool.query(
+      `SELECT ha.id, ha.amount, ha.payment_deadline, ha.status, ha.created_at,
+              ha.matched_with_name AS counterparty_name,
+              ha.matched_with_phone AS counterparty_phone,
+              ha.payment_account,
+              ha.matched_with_email,
+              CASE 
+                WHEN ha.giver_id = $1 THEN 'giver'
+                WHEN ha.receiver_id = $1 THEN 'receiver'
+              END AS user_role
+       FROM help_activities ha
+       WHERE (ha.giver_id = $1 OR ha.receiver_id = $1)
+         AND ha.manual_entry = true
+         AND ha.status IN ('matched', 'pending', 'active')
+       ORDER BY ha.created_at DESC
+       LIMIT 1`,
+      [req.params.userId]
+    );
+
+    if (manualMatch.rows.length > 0) {
+      const row = manualMatch.rows[0];
+      return res.json({
+        success: true,
+        data: {
+          role: row.user_role,
+          match: {
+            id: row.id,
+            amount: row.amount,
+            payment_deadline: row.payment_deadline,
+            status: row.status,
+            created_at: row.created_at,
+            matched_user: {
+              full_name: row.counterparty_name,
+              phone_number: row.counterparty_phone,
+              email: row.matched_with_email,
+              account_number: row.payment_account || '',
+              account_name: row.counterparty_name || '',
+              bank_name: 'Manual Entry'
+            }
+          }
+        }
+      });
+    }
+
     res.json({ success: true, data: null });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
