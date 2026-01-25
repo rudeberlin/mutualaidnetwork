@@ -1160,6 +1160,15 @@ app.post('/api/admin/create-manual-match', authenticateToken, requireAdmin, asyn
       });
     }
 
+    // Verify user exists
+    const userCheck = await pool.query('SELECT id FROM users WHERE id = $1', [userId]);
+    if (userCheck.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'User not found in system'
+      });
+    }
+
     // Set payment deadline to 6 hours from now
     const paymentDeadline = new Date();
     paymentDeadline.setHours(paymentDeadline.getHours() + 6);

@@ -507,6 +507,9 @@ export const AdminPaymentMatching: React.FC = () => {
               {/* User Details */}
               <div>
                 <h4 className="text-white font-semibold mb-3">User Details</h4>
+                <p className="text-slate-300 text-xs mb-3 bg-slate-800/50 p-3 rounded">
+                  💡 <strong>Tip:</strong> Enter an existing user ID from the system. The user must already be registered.
+                </p>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="text-slate-300 text-sm block mb-1">User ID *</label>
