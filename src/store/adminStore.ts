@@ -164,6 +164,8 @@ export const useAdminStore = create<AdminState>((set, get) => ({
     set({
       helpActivities: get().helpActivities.map((h) => (h.id === id ? { ...h, status: 'Completed' } : h)),
     });
+    // Refresh to ensure persistence
+    await this.refreshHelpActivities();
   },
 
   async resolveDispute(id) {
@@ -171,6 +173,8 @@ export const useAdminStore = create<AdminState>((set, get) => ({
     set({
       helpActivities: get().helpActivities.map((h) => (h.id === id ? { ...h, status: 'Active' } : h)),
     });
+    // Refresh to ensure persistence
+    await this.refreshHelpActivities();
   },
 
   async verifyPayment(id) {

@@ -4,7 +4,6 @@ import { Navbar } from '../components/Navbar';
 import { SettingsModal } from '../components/SettingsModal';
 import { PaymentMethodModal } from '../components/PaymentMethodModal';
 import { Testimonials } from '../components/Testimonials';
-import { PaymentMatchCard } from '../components/PaymentMatchCard';
 import { Toast } from '../components/Toast';
 import { PACKAGES, MOCK_CURRENT_USER, MOCK_TRANSACTIONS } from '../utils/mockData';
 import { useAuthStore } from '../store';
@@ -502,8 +501,7 @@ export const UserDashboard: React.FC = () => {
           </div>
         </div>
 
-        {/* Payment Match Card - Shows when user is matched for payment */}
-        {paymentMatch && paymentMatch.status !== 'completed' && <PaymentMatchCard />}
+        {/* Payment Match Card - Removed - Details shown in Offering Help section below */}
 
         {/* After Payment Confirmed - Show Package Subscription & Maturity */}
         {paymentMatch && paymentMatch.status === 'completed' && selectedOfferPackage && (
