@@ -47,8 +47,22 @@ export const AdminPaymentMatching: React.FC = () => {
   const [selectedReceiver, setSelectedReceiver] = useState<PendingReceiver | null>(null);
   const [selectedGiver, setSelectedGiver] = useState<AvailableGiver | null>(null);
   const [showAssignModal, setShowAssignModal] = useState<{ type: 'receiver' | 'giver'; data: any } | null>(null);
+  const [showManualEntryModal, setShowManualEntryModal] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const { token } = useAuthStore();
+  const [manualEntry, setManualEntry] = useState({
+    userId: '',
+    userEmail: '',
+    userName: '',
+    userPhone: '',
+    role: 'receiver' as 'receiver' | 'giver',
+    amount: '',
+    matchedWithName: '',
+    matchedWithEmail: '',
+    matchedWithPhone: '',
+    paymentAccount: '',
+    paymentMethod: ''
+  });
 
   const fetchData = async () => {
     try {
@@ -138,6 +152,40 @@ export const AdminPaymentMatching: React.FC = () => {
     }
   };
 
+  const handleManualEntry = async () => {
+    if (!manualEntry.userId || !manualEntry.amount || !manualEntry.matchedWithName) {
+      setToast({ message: 'Please fill in all required fields', type: 'error' });
+      return;
+    }
+
+    try {
+      await axios.post(
+        `${API_URL}/api/admin/create-manual-match`,
+        manualEntry,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setToast({ message: 'Manual payment match created successfully', type: 'success' });
+      setShowManualEntryModal(false);
+      setManualEntry({
+        userId: '',
+        userEmail: '',
+        userName: '',
+        userPhone: '',
+        role: 'receiver',
+        amount: '',
+        matchedWithName: '',
+        matchedWithEmail: '',
+        matchedWithPhone: '',
+        paymentAccount: '',
+        paymentMethod: ''
+      });
+      fetchData();
+    } catch (error: any) {
+      const errorMsg = error.response?.data?.error || 'Failed to create manual match';
+      setToast({ message: errorMsg, type: 'error' });
+    }
+  };
+
   return (
     <div className="space-y-6">
       {toast && (
@@ -150,7 +198,16 @@ export const AdminPaymentMatching: React.FC = () => {
 
       <div>
         <p className="text-emerald-300 text-sm">Match users for payments</p>
-        <h1 className="text-2xl font-bold text-white">Payment Matching</h1>
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-bold text-white">Payment Matching</h1>
+          <button
+            onClick={() => setShowManualEntryModal(true)}
+            className="px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white font-semibold rounded-lg transition flex items-center gap-2"
+          >
+            <Link2 size={18} />
+            Manual Entry
+          </button>
+        </div>
       </div>
 
       {/* Pending Receivers */}
@@ -431,6 +488,173 @@ export const AdminPaymentMatching: React.FC = () => {
           </table>
         </div>
       </div>
+
+      {/* Manual Entry Modal */}
+      {showManualEntryModal && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-slate-900 border border-white/10 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-white/10 flex items-center justify-between sticky top-0 bg-slate-900">
+              <h3 className="text-white font-bold text-xl">Manual Payment Match Entry</h3>
+              <button
+                onClick={() => setShowManualEntryModal(false)}
+                className="text-slate-400 hover:text-white transition"
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              {/* User Details */}
+              <div>
+                <h4 className="text-white font-semibold mb-3">User Details</h4>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-slate-300 text-sm block mb-1">User ID *</label>
+                    <input
+                      type="text"
+                      value={manualEntry.userId}
+                      onChange={(e) => setManualEntry({ ...manualEntry, userId: e.target.value })}
+                      className="w-full px-3 py-2 bg-slate-800 text-white rounded-lg border border-slate-700 focus:border-blue-500 focus:outline-none"
+                      placeholder="Enter user ID"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-slate-300 text-sm block mb-1">User Name</label>
+                    <input
+                      type="text"
+                      value={manualEntry.userName}
+                      onChange={(e) => setManualEntry({ ...manualEntry, userName: e.target.value })}
+                      className="w-full px-3 py-2 bg-slate-800 text-white rounded-lg border border-slate-700 focus:border-blue-500 focus:outline-none"
+                      placeholder="Enter user name"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-slate-300 text-sm block mb-1">User Email</label>
+                    <input
+                      type="email"
+                      value={manualEntry.userEmail}
+                      onChange={(e) => setManualEntry({ ...manualEntry, userEmail: e.target.value })}
+                      className="w-full px-3 py-2 bg-slate-800 text-white rounded-lg border border-slate-700 focus:border-blue-500 focus:outline-none"
+                      placeholder="user@example.com"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-slate-300 text-sm block mb-1">User Phone</label>
+                    <input
+                      type="tel"
+                      value={manualEntry.userPhone}
+                      onChange={(e) => setManualEntry({ ...manualEntry, userPhone: e.target.value })}
+                      className="w-full px-3 py-2 bg-slate-800 text-white rounded-lg border border-slate-700 focus:border-blue-500 focus:outline-none"
+                      placeholder="Phone number"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Match Details */}
+              <div>
+                <h4 className="text-white font-semibold mb-3">Match Details</h4>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-slate-300 text-sm block mb-1">User Role *</label>
+                    <select
+                      value={manualEntry.role}
+                      onChange={(e) => setManualEntry({ ...manualEntry, role: e.target.value as 'receiver' | 'giver' })}
+                      className="w-full px-3 py-2 bg-slate-800 text-white rounded-lg border border-slate-700 focus:border-blue-500 focus:outline-none"
+                    >
+                      <option value="receiver">Receiver (Needs Help)</option>
+                      <option value="giver">Giver (Provides Help)</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-slate-300 text-sm block mb-1">Amount *</label>
+                    <input
+                      type="number"
+                      value={manualEntry.amount}
+                      onChange={(e) => setManualEntry({ ...manualEntry, amount: e.target.value })}
+                      className="w-full px-3 py-2 bg-slate-800 text-white rounded-lg border border-slate-700 focus:border-blue-500 focus:outline-none"
+                      placeholder="0.00"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Matched Counterparty Details */}
+              <div>
+                <h4 className="text-white font-semibold mb-3">Matched {manualEntry.role === 'receiver' ? 'Giver' : 'Receiver'} Details *</h4>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-slate-300 text-sm block mb-1">Name *</label>
+                    <input
+                      type="text"
+                      value={manualEntry.matchedWithName}
+                      onChange={(e) => setManualEntry({ ...manualEntry, matchedWithName: e.target.value })}
+                      className="w-full px-3 py-2 bg-slate-800 text-white rounded-lg border border-slate-700 focus:border-blue-500 focus:outline-none"
+                      placeholder="Matched user name"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-slate-300 text-sm block mb-1">Email</label>
+                    <input
+                      type="email"
+                      value={manualEntry.matchedWithEmail}
+                      onChange={(e) => setManualEntry({ ...manualEntry, matchedWithEmail: e.target.value })}
+                      className="w-full px-3 py-2 bg-slate-800 text-white rounded-lg border border-slate-700 focus:border-blue-500 focus:outline-none"
+                      placeholder="matched@example.com"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-slate-300 text-sm block mb-1">Phone</label>
+                    <input
+                      type="tel"
+                      value={manualEntry.matchedWithPhone}
+                      onChange={(e) => setManualEntry({ ...manualEntry, matchedWithPhone: e.target.value })}
+                      className="w-full px-3 py-2 bg-slate-800 text-white rounded-lg border border-slate-700 focus:border-blue-500 focus:outline-none"
+                      placeholder="Phone number"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-slate-300 text-sm block mb-1">Payment Account</label>
+                    <input
+                      type="text"
+                      value={manualEntry.paymentAccount}
+                      onChange={(e) => setManualEntry({ ...manualEntry, paymentAccount: e.target.value })}
+                      className="w-full px-3 py-2 bg-slate-800 text-white rounded-lg border border-slate-700 focus:border-blue-500 focus:outline-none"
+                      placeholder="Account number/details"
+                    />
+                  </div>
+                </div>
+                <div className="mt-4">
+                  <label className="text-slate-300 text-sm block mb-1">Payment Method</label>
+                  <input
+                    type="text"
+                    value={manualEntry.paymentMethod}
+                    onChange={(e) => setManualEntry({ ...manualEntry, paymentMethod: e.target.value })}
+                    className="w-full px-3 py-2 bg-slate-800 text-white rounded-lg border border-slate-700 focus:border-blue-500 focus:outline-none"
+                    placeholder="e.g., Bank Transfer, PayPal, etc."
+                  />
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-3 pt-4">
+                <button
+                  onClick={() => setShowManualEntryModal(false)}
+                  className="flex-1 px-4 py-3 bg-slate-700 hover:bg-slate-600 text-white font-semibold rounded-lg transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleManualEntry}
+                  className="flex-1 px-4 py-3 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-bold rounded-lg transition"
+                >
+                  Create Manual Match
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

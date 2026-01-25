@@ -1143,6 +1143,55 @@ app.post('/api/admin/create-match', authenticateToken, requireAdmin, async (req,
   }
 });
 
+// Create manual payment match
+app.post('/api/admin/create-manual-match', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { 
+      userId, userName, userEmail, userPhone, role, amount,
+      matchedWithName, matchedWithEmail, matchedWithPhone, 
+      paymentAccount, paymentMethod 
+    } = req.body;
+    
+    // Validate required fields
+    if (!userId || !amount || !matchedWithName) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'User ID, amount, and matched user name are required' 
+      });
+    }
+
+    // Set payment deadline to 6 hours from now
+    const paymentDeadline = new Date();
+    paymentDeadline.setHours(paymentDeadline.getHours() + 6);
+    
+    // Create a help activity for tracking
+    const activityId = uuidv4();
+    const helpActivityResult = await pool.query(`
+      INSERT INTO help_activities (
+        id, ${role === 'receiver' ? 'receiver_id' : 'giver_id'}, 
+        amount, status, payment_method, payment_deadline, admin_approved, 
+        matched_at, manual_entry, matched_with_name, matched_with_email, 
+        matched_with_phone, payment_account
+      )
+      VALUES ($1, $2, $3, 'matched', $4, $5, true, CURRENT_TIMESTAMP, true, $6, $7, $8, $9)
+      RETURNING *
+    `, [
+      activityId, userId, amount, paymentMethod || 'Manual Entry',
+      paymentDeadline, matchedWithName, matchedWithEmail || '',
+      matchedWithPhone || '', paymentAccount || ''
+    ]);
+
+    res.json({ 
+      success: true, 
+      data: helpActivityResult.rows[0],
+      message: 'Manual payment match created successfully' 
+    });
+  } catch (error) {
+    console.error('Manual match creation error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // Get payment matches
 app.get('/api/admin/payment-matches', authenticateToken, requireAdmin, async (req, res) => {
   try {
