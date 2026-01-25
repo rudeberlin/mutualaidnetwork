@@ -1,8 +1,8 @@
 import { format, differenceInDays } from 'date-fns';
 
-// Currency formatting (USD)
+// Currency formatting (GHS - Ghana Cedis)
 export const formatCurrency = (amount: number): string => {
-  return `$${amount.toLocaleString('en-US', {
+  return `₵${amount.toLocaleString('en-US', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })}`;

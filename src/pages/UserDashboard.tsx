@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import axios from 'axios';
 import { Navbar } from '../components/Navbar';
 import { SettingsModal } from '../components/SettingsModal';
 import { PaymentMethodModal } from '../components/PaymentMethodModal';
 import { Testimonials } from '../components/Testimonials';
 import { PaymentMatchCard } from '../components/PaymentMatchCard';
+import { Toast } from '../components/Toast';
 import { PACKAGES, MOCK_CURRENT_USER, MOCK_TRANSACTIONS } from '../utils/mockData';
 import { useAuthStore } from '../store';
 import type { Package } from '../types';
@@ -17,6 +18,7 @@ export const UserDashboard: React.FC = () => {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showPackageSelection, setShowPackageSelection] = useState(false);
   const [showCurrentPackageModal, setShowCurrentPackageModal] = useState(false);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [selectedOfferPackage, setSelectedOfferPackage] = useState<Package | null>(() => {
     const saved = localStorage.getItem('selectedOfferPackage');
     return saved ? JSON.parse(saved) : null;
@@ -86,52 +88,53 @@ export const UserDashboard: React.FC = () => {
     localStorage.setItem('timeRemaining', timeRemaining.toString());
   }, [timeRemaining]);
 
-  // Fetch payment match data
-  useEffect(() => {
-    const fetchPaymentMatch = async () => {
-      if (!user?.id || !token) return;
+  // Fetch payment match data callback
+  const fetchPaymentMatchData = useCallback(async () => {
+    if (!user?.id || !token) return;
+    
+    try {
+      const response = await axios.get(`${API_URL}/api/user/${user.id}/payment-match`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
       
-      try {
-        const response = await axios.get(`${API_URL}/api/user/${user.id}/payment-match`, {
-          headers: { Authorization: `Bearer ${token}` }
+      if (response.data.success && response.data.data) {
+        const matchData = response.data.data;
+        // Transform API response to match our component structure
+        setPaymentMatch({
+          id: matchData.match.id,
+          amount: matchData.match.amount,
+          payment_deadline: matchData.match.payment_deadline,
+          status: matchData.match.status,
+          role: matchData.role,
+          matched_user_name: matchData.match.matched_user.full_name,
+          matched_user_phone: matchData.match.matched_user.phone_number,
+          bank_details: matchData.match.matched_user.account_number ? {
+            account_name: matchData.match.matched_user.account_name,
+            account_number: matchData.match.matched_user.account_number,
+            bank_name: matchData.match.matched_user.bank_name
+          } : null
         });
-        
-        if (response.data.success && response.data.data) {
-          const matchData = response.data.data;
-          // Transform API response to match our component structure
-          setPaymentMatch({
-            id: matchData.match.id,
-            amount: matchData.match.amount,
-            payment_deadline: matchData.match.payment_deadline,
-            status: matchData.match.status,
-            role: matchData.role,
-            matched_user_name: matchData.match.matched_user.full_name,
-            matched_user_phone: matchData.match.matched_user.phone_number,
-            bank_details: matchData.match.matched_user.account_number ? {
-              account_name: matchData.match.matched_user.account_name,
-              account_number: matchData.match.matched_user.account_number,
-              bank_name: matchData.match.matched_user.bank_name
-            } : null
-          });
-          // Update status to matched if we have a match
-          if (matchData.role === 'giver' && offerHelpStatus !== 'matched') {
-            setOfferHelpStatus('matched');
-          } else if (matchData.role === 'receiver' && receiveHelpStatus !== 'matched') {
-            setReceiveHelpStatus('matched');
-          }
-        } else {
-          setPaymentMatch(null);
+        // Update status to matched if we have a match
+        if (matchData.role === 'giver' && offerHelpStatus !== 'matched') {
+          setOfferHelpStatus('matched');
+        } else if (matchData.role === 'receiver' && receiveHelpStatus !== 'matched') {
+          setReceiveHelpStatus('matched');
         }
-      } catch (error) {
-        console.error('Failed to fetch payment match:', error);
+      } else {
         setPaymentMatch(null);
       }
-    };
-
-    fetchPaymentMatch();
-    const interval = setInterval(fetchPaymentMatch, 10000); // Poll every 10 seconds
-    return () => clearInterval(interval);
+    } catch (error) {
+      console.error('Failed to fetch payment match:', error);
+      setPaymentMatch(null);
+    }
   }, [user?.id, token, offerHelpStatus, receiveHelpStatus]);
+
+  // Set up polling for payment match data
+  useEffect(() => {
+    fetchPaymentMatchData();
+    const interval = setInterval(fetchPaymentMatchData, 10000); // Poll every 10 seconds
+    return () => clearInterval(interval);
+  }, [fetchPaymentMatchData]);
   
   // Dashboard stats from API
   const [dashboardStats, setDashboardStats] = useState({
@@ -275,6 +278,15 @@ export const UserDashboard: React.FC = () => {
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-emerald-950">
       <Navbar />
+
+      {/* Toast Notification */}
+      {toast && (
+        <Toast 
+          message={toast.message} 
+          type={toast.type} 
+          onClose={() => setToast(null)} 
+        />
+      )}
 
       {/* Settings Modal */}
       {showSettings && (
@@ -565,19 +577,23 @@ export const UserDashboard: React.FC = () => {
                         <p className="text-white text-sm"><span className="text-slate-400">Name:</span> {paymentMatch.bank_details.account_name}</p>
                       </div>
                     )}
-                    <p className="text-emerald-400 font-bold text-lg">Amount: ${paymentMatch.amount}</p>
+                    <p className="text-emerald-400 font-bold text-lg">Amount: ₵{paymentMatch.amount.toLocaleString()}</p>
                     <button
                       onClick={async () => {
                         if (confirm('Have you sent the payment to the receiver?')) {
                           try {
-                            await axios.post(
-                              `${API_URL}/api/user/payment-confirm`,
+                            const response = await axios.post(
+                              `${API_URL}/api/user/confirm-payment-sent`,
                               { matchId: paymentMatch.id },
                               { headers: { Authorization: `Bearer ${token}` } }
                             );
-                            alert('Payment confirmation sent! Admin will verify.');
-                          } catch (error) {
-                            alert('Failed to confirm payment. Please try again.');
+                            if (response.data.success) {
+                              setToast({ message: 'Payment confirmed! Pending admin approval. Countdown will start after verification.', type: 'success' });
+                              setTimeout(() => fetchPaymentMatchData(), 2000);
+                            }
+                          } catch (error: any) {
+                            const errorMsg = error.response?.data?.error || 'Failed to confirm payment. Please try again.';
+                            setToast({ message: errorMsg, type: 'error' });
                           }
                         }
                       }}
@@ -723,7 +739,7 @@ export const UserDashboard: React.FC = () => {
                   <div className="text-right">
                     <p className="text-slate-400 text-sm">Expected Return</p>
                     <p className="text-emerald-400 font-bold text-xl">
-                      ${selectedOfferPackage ? Math.round(selectedOfferPackage.amount * selectedOfferPackage.returnPercentage / 100) : 0}
+                      ₵{selectedOfferPackage ? Math.round(selectedOfferPackage.amount * selectedOfferPackage.returnPercentage / 100).toLocaleString() : 0}
                     </p>
                   </div>
                 </div>
@@ -952,7 +968,7 @@ export const UserDashboard: React.FC = () => {
                         <span className="text-2xl">{pkg.icon}</span>
                         <div>
                           <p className="text-white font-semibold">{pkg.name}</p>
-                          <p className="text-slate-400 text-sm">${pkg.amount}</p>
+                          <p className="text-slate-400 text-sm">₵{pkg.amount.toLocaleString()}</p>
                         </div>
                       </div>
                       <span className="text-emerald-400 text-sm font-semibold">{pkg.returnPercentage}%</span>
@@ -1000,7 +1016,7 @@ export const UserDashboard: React.FC = () => {
                               <span className="text-3xl">{selectedOfferPackage.icon}</span>
                               <div>
                                 <p className="text-white font-bold text-lg">{selectedOfferPackage.name}</p>
-                                <p className="text-emerald-400 font-bold text-2xl">${selectedOfferPackage.amount}</p>
+                                <p className="text-emerald-400 font-bold text-2xl">₵{selectedOfferPackage.amount.toLocaleString()}</p>
                                 <p className="text-slate-400 text-xs mt-2">
                                   • {selectedOfferPackage.returnPercentage}% ROI
                                   <br />
@@ -1022,7 +1038,7 @@ export const UserDashboard: React.FC = () => {
                               <span className="text-3xl">{selectedReceivePackage.icon}</span>
                               <div>
                                 <p className="text-white font-bold text-lg">{selectedReceivePackage.name}</p>
-                                <p className="text-emerald-400 font-bold text-2xl">${selectedReceivePackage.amount}</p>
+                                <p className="text-emerald-400 font-bold text-2xl">₵{selectedReceivePackage.amount.toLocaleString()}</p>
                                 <p className="text-slate-400 text-xs mt-2">
                                   • {selectedReceivePackage.returnPercentage}% ROI
                                   <br />

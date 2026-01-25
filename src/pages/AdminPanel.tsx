@@ -202,15 +202,17 @@ export const AdminPanel: React.FC = () => {
                     {[
                       { id: '1', name: 'Basic', amount: 25, returnPercentage: 30, duration: 3 },
                       { id: '2', name: 'Bronze', amount: 100, returnPercentage: 30, duration: 5 },
-                      { id: '3', name: 'Silver', amount: 250, returnPercentage: 50, duration: 15 },
-                      { id: '4', name: 'Gold', amount: 500, returnPercentage: 50, duration: 15 },
+                      { id: '1', name: 'Basic', amount: 250, returnPercentage: 50, duration: 5 },
+                      { id: '2', name: 'Standard', amount: 500, returnPercentage: 50, duration: 5 },
+                      { id: '3', name: 'Premium', amount: 1500, returnPercentage: 50, duration: 15 },
+                      { id: '4', name: 'Elite', amount: 2500, returnPercentage: 50, duration: 15 },
                     ].map((plan) => (
                       <div key={plan.id} className="glass p-3 rounded-lg">
                         <div className="flex justify-between items-center">
                           <div>
                             <p className="font-semibold text-white text-sm">{plan.name}</p>
                             <p className="text-dark-300 text-xs">
-                              ${plan.amount} • {plan.returnPercentage}% Return
+                              ₵{plan.amount.toLocaleString()} • {plan.returnPercentage}% Return
                             </p>
                           </div>
                           <p className="text-gold-400 font-semibold text-sm">{plan.duration}d</p>

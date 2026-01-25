@@ -36,7 +36,7 @@ export const PlanCard: React.FC<PlanCardProps> = ({
       <div className="space-y-4 mb-6 py-4 border-y border-white/10">
         <div className="flex justify-between items-center">
           <span className="text-slate-400">Amount</span>
-          <span className="text-emerald-400 font-semibold">${plan.amount}</span>
+          <span className="text-emerald-400 font-semibold">₵{plan.amount.toLocaleString()}</span>
         </div>
         <div className="flex justify-between items-center">
           <span className="text-slate-400">Return</span>
