@@ -4,7 +4,7 @@ import dotenv from 'dotenv';
 import jwt from 'jsonwebtoken';
 import bcryptjs from 'bcryptjs';
 import multer from 'multer';
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import cloudinary from 'cloudinary';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
@@ -57,23 +57,20 @@ if (!fs.existsSync(uploadsDir)) {
 
 app.use('/uploads', express.static('uploads'));
 
-// AWS S3 client (enabled when all required env vars are present)
-const s3Enabled = Boolean(
-  process.env.AWS_S3_BUCKET &&
-  process.env.AWS_REGION &&
-  process.env.AWS_ACCESS_KEY_ID &&
-  process.env.AWS_SECRET_ACCESS_KEY
+// Cloudinary client (enabled when env vars are present)
+const cloudEnabled = Boolean(
+  process.env.CLOUDINARY_CLOUD_NAME &&
+  process.env.CLOUDINARY_API_KEY &&
+  process.env.CLOUDINARY_API_SECRET
 );
 
-const s3 = s3Enabled
-  ? new S3Client({
-      region: process.env.AWS_REGION,
-      credentials: {
-        accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY
-      }
-    })
-  : null;
+if (cloudEnabled) {
+  cloudinary.v2.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET
+  });
+}
 
 // JWT helpers
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
@@ -715,38 +712,36 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
     }
     const originalName = req.file.originalname || 'upload';
     const safeName = originalName.replace(/[^a-zA-Z0-9.\-_]/g, '_');
-    const key = `uploads/${Date.now()}-${uuidv4()}-${safeName}`;
 
-    if (s3Enabled && s3) {
-      await s3.send(
-        new PutObjectCommand({
-          Bucket: process.env.AWS_S3_BUCKET,
-          Key: key,
-          Body: req.file.buffer,
-          ContentType: req.file.mimetype,
-          ACL: 'private'
-        })
-      );
+    if (cloudEnabled) {
+      const uploadStream = () => new Promise((resolve, reject) => {
+        const stream = cloudinary.v2.uploader.upload_stream({
+          folder: 'mutual-aid/uploads',
+          public_id: `${Date.now()}-${uuidv4()}`,
+          resource_type: 'image'
+        }, (error, result) => {
+          if (error) return reject(error);
+          return resolve(result);
+        });
+        stream.end(req.file.buffer);
+      });
 
-      const baseUrl =
-        process.env.AWS_S3_BASE_URL ||
-        `https://${process.env.AWS_S3_BUCKET}.s3.${process.env.AWS_REGION}.amazonaws.com`;
-      const fileUrl = `${baseUrl}/${key}`;
-
+      const result = await uploadStream();
       return res.json({
         success: true,
         data: {
           filename: safeName,
-          path: fileUrl,
-          key,
+          path: result.secure_url,
+          key: result.public_id,
           size: req.file.size,
-          storage: 's3'
+          storage: 'cloudinary'
         }
       });
     }
 
     // Fallback to local disk storage for development
-    const localPath = path.join(uploadsDir, key.split('/').pop());
+    const key = `uploads-${Date.now()}-${uuidv4()}-${safeName}`;
+    const localPath = path.join(uploadsDir, key);
     fs.writeFileSync(localPath, req.file.buffer);
 
     return res.json({
