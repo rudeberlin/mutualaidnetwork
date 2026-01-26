@@ -204,11 +204,16 @@ export async function initializeDatabase() {
     await client.query(`
       INSERT INTO packages (id, name, amount, return_percentage, duration_days, description, active)
       VALUES 
-        ('pkg-1', 'Basic', 25, 30, 3, 'Perfect for beginners', true),
-        ('pkg-2', 'Bronze', 100, 30, 5, 'Great value package', true),
-        ('pkg-3', 'Silver', 250, 50, 15, 'Most popular choice', true),
-        ('pkg-4', 'Gold', 500, 50, 15, 'Premium package', true)
-      ON CONFLICT (id) DO NOTHING
+        ('pkg-1', 'Basic Help', 250, 30, 3, 'Perfect for beginners', true),
+        ('pkg-2', 'Standard', 500, 30, 5, 'Great value package', true),
+        ('pkg-3', 'Premium', 1500, 50, 15, 'Most popular choice', true),
+        ('pkg-4', 'Elite Help', 2500, 50, 15, 'Premium package', true)
+      ON CONFLICT (id) DO UPDATE SET 
+        name = EXCLUDED.name,
+        amount = EXCLUDED.amount,
+        return_percentage = EXCLUDED.return_percentage,
+        duration_days = EXCLUDED.duration_days,
+        description = EXCLUDED.description
     `);
 
     // Seed default admin user if not exists

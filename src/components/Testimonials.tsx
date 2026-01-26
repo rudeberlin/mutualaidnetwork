@@ -180,8 +180,7 @@ export const Testimonials: React.FC<TestimonialsProps> = ({ testimonials = defau
           <div className="overflow-hidden">
             <div className="flex gap-6 transition-transform duration-500 ease-out"
               style={{
-                transform: `translateX(-${currentIndex * (100 / Math.max(1, testimonials.length))}%)`,
-                width: `${testimonials.length * 100}%`
+                transform: `translateX(-${currentIndex * 33.33}%)`
               }}
             >
               {testimonials.map((testimonial, idx) => (

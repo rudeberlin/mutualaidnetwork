@@ -1810,7 +1810,7 @@ app.post('/api/admin/payment-matches/:id/confirm', authenticateToken, requireAdm
   try {
     const matchResult = await pool.query(`
       UPDATE payment_matches 
-      SET status = 'confirmed', completed_at = CURRENT_TIMESTAMP
+      SET status = 'awaiting_receiver_confirmation', admin_confirmed_at = CURRENT_TIMESTAMP
       WHERE id = $1
       RETURNING *
     `, [req.params.id]);
@@ -1819,39 +1819,10 @@ app.post('/api/admin/payment-matches/:id/confirm', authenticateToken, requireAdm
       return res.status(404).json({ success: false, error: 'Match not found' });
     }
     
-    const match = matchResult.rows[0];
+    // Do NOT activate packages yet - wait for receiver confirmation
+    // Activities remain in 'matched' status
     
-    // Get package duration to calculate maturity date
-    const packageInfo = await pool.query(`
-      SELECT p.duration_days 
-      FROM help_activities ha
-      LEFT JOIN packages p ON ha.package_id = p.id
-      WHERE ha.id = $1
-    `, [match.help_activity_id]);
-    
-    const durationDays = packageInfo.rows[0]?.duration_days || 5;
-    
-    // Update the primary help activity (receiver's activity) status to 'active' and set maturity date
-    await pool.query(`
-      UPDATE help_activities 
-      SET status = 'active', 
-          maturity_date = CURRENT_TIMESTAMP + INTERVAL '${durationDays} days'
-      WHERE id = $1
-    `, [match.help_activity_id]);
-    
-    // Also activate giver's help_activity and set their maturity date
-    // Giver's maturity determines when they can request help
-    await pool.query(`
-      UPDATE help_activities 
-      SET status = 'active', 
-          maturity_date = CURRENT_TIMESTAMP + INTERVAL '${durationDays} days'
-      WHERE giver_id = $1 
-        AND receiver_id = $2
-        AND status = 'matched'
-        AND id != $3
-    `, [match.giver_id, match.receiver_id, match.help_activity_id]);
-    
-    res.json({ success: true, data: matchResult.rows[0] });
+    res.json({ success: true, data: matchResult.rows[0], message: 'Payment verified by admin - awaiting receiver confirmation' });
   } catch (error) {
     console.error('Confirm match error:', error);
     res.status(500).json({ success: false, error: error.message });
@@ -2108,21 +2079,80 @@ app.post('/api/user/payment-confirm', authenticateToken, async (req, res) => {
         });
       }
     } else {
-      // Integer format - try payment_matches first
-      result = await pool.query(
-        `UPDATE payment_matches 
-         SET status = 'awaiting_confirmation' 
-         WHERE id = $1 
-         AND (giver_id = $2 OR receiver_id = $2)
-         RETURNING *`,
+      // Integer format - try payment_matches
+      // First check if admin has already verified
+      const matchCheckResult = await pool.query(
+        'SELECT * FROM payment_matches WHERE id = $1 AND receiver_id = $2',
         [matchId, req.userId]
       );
       
-      if (result.rows.length > 0) {
+      if (matchCheckResult.rows.length === 0) {
+        return res.status(404).json({ success: false, error: 'Match not found or unauthorized' });
+      }
+      
+      const match = matchCheckResult.rows[0];
+      const shouldActivate = match.status === 'awaiting_receiver_confirmation';
+      
+      if (shouldActivate) {
+        // Admin verified + receiver confirmed = ACTIVATE packages
+        result = await pool.query(
+          `UPDATE payment_matches 
+           SET status = 'confirmed', receiver_confirmed_at = CURRENT_TIMESTAMP, completed_at = CURRENT_TIMESTAMP
+           WHERE id = $1
+           RETURNING *`,
+          [matchId]
+        );
+        
+        // Get package duration to calculate maturity date
+        const packageInfo = await pool.query(`
+          SELECT p.duration_days 
+          FROM help_activities ha
+          LEFT JOIN packages p ON ha.package_id = p.id
+          WHERE ha.id = $1
+        `, [match.help_activity_id]);
+        
+        const durationDays = packageInfo.rows[0]?.duration_days || 5;
+        
+        // Activate receiver's help activity with maturity date
+        await pool.query(`
+          UPDATE help_activities 
+          SET status = 'active', 
+              maturity_date = CURRENT_TIMESTAMP + INTERVAL '${durationDays} days'
+          WHERE id = $1
+        `, [match.help_activity_id]);
+        
+        // Also activate giver's help_activity and set their maturity date
+        await pool.query(`
+          UPDATE help_activities 
+          SET status = 'active', 
+              maturity_date = CURRENT_TIMESTAMP + INTERVAL '${durationDays} days'
+          WHERE giver_id = $1 
+            AND receiver_id = $2
+            AND status = 'matched'
+            AND id != $3
+        `, [match.giver_id, match.receiver_id, match.help_activity_id]);
+        
         return res.json({ 
           success: true, 
-          message: 'Payment confirmation submitted. Admin will verify.',
-          data: result.rows[0] 
+          message: 'Payment confirmed! Packages are now active and maturity timer started.',
+          data: result.rows[0],
+          packagesActivated: true
+        });
+      } else {
+        // Just record receiver confirmation, wait for admin
+        result = await pool.query(
+          `UPDATE payment_matches 
+           SET status = 'awaiting_admin_verification', receiver_confirmed_at = CURRENT_TIMESTAMP
+           WHERE id = $1
+           RETURNING *`,
+          [matchId]
+        );
+        
+        return res.json({ 
+          success: true, 
+          message: 'Payment confirmation received. Awaiting admin verification.',
+          data: result.rows[0],
+          packagesActivated: false
         });
       }
     }
