@@ -77,6 +77,15 @@ export const UserDashboard: React.FC = () => {
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [paymentMatch, setPaymentMatch] = useState<PaymentMatchState | null>(null);
   const [hasFetchedMatch, setHasFetchedMatch] = useState(false);
+  const [giverMaturity, setGiverMaturity] = useState<{
+    has_active_giver_activity: boolean;
+    is_mature: boolean;
+    can_request_help: boolean;
+    time_to_maturity_seconds?: number;
+    maturity_date?: string;
+    package_name?: string;
+    amount?: number;
+  } | null>(null);
   const transactionContainerRef = useRef<HTMLDivElement>(null);
   const { user, token, initializeFromStorage } = useAuthStore();
   const currentUser = user || MOCK_CURRENT_USER;
@@ -225,6 +234,30 @@ export const UserDashboard: React.FC = () => {
     fetchDashboardStats();
     // Poll aggressively every 5 seconds to catch status changes quickly
     const interval = setInterval(fetchDashboardStats, 5000);
+    return () => clearInterval(interval);
+  }, [user?.id, token]);
+
+  // Fetch giver maturity status (determines if "Receive Help" button should be enabled)
+  useEffect(() => {
+    const fetchGiverMaturity = async () => {
+      if (!user?.id || !token) return;
+      
+      try {
+        const response = await axios.get(`${API_URL}/api/user/${user.id}/giver-maturity`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        
+        if (response.data.success) {
+          setGiverMaturity(response.data.data);
+        }
+      } catch (error) {
+        console.error('Failed to fetch giver maturity:', error);
+      }
+    };
+
+    fetchGiverMaturity();
+    // Poll every 30 seconds to check maturity status
+    const interval = setInterval(fetchGiverMaturity, 30000);
     return () => clearInterval(interval);
   }, [user?.id, token]);
 
@@ -494,16 +527,29 @@ export const UserDashboard: React.FC = () => {
             </button>
             <button
               onClick={handleReceiveHelp}
-              disabled={!offerHelpStatus || receiveHelpStatus !== null}
+              disabled={!giverMaturity?.can_request_help || receiveHelpStatus !== null}
               className={`flex items-center gap-2 px-6 py-3 font-semibold rounded-lg transition-all ${
-                !offerHelpStatus || receiveHelpStatus !== null
+                !giverMaturity?.can_request_help || receiveHelpStatus !== null
                   ? 'bg-slate-500 text-gray-300 cursor-not-allowed opacity-50'
                   : 'bg-emerald-500 text-white hover:bg-emerald-600'
               }`}
-              title={!offerHelpStatus ? 'Offer help first before requesting help' : receiveHelpStatus !== null ? 'You can only have one active package at a time' : ''}
+              title={
+                !giverMaturity?.has_active_giver_activity 
+                  ? 'Offer help first before requesting help' 
+                  : !giverMaturity?.is_mature
+                  ? `Package must mature first (${giverMaturity?.time_to_maturity_seconds ? Math.ceil(giverMaturity.time_to_maturity_seconds / 86400) : '?'} days remaining)`
+                  : receiveHelpStatus !== null 
+                  ? 'You already have an active help request' 
+                  : 'Request help from the network'
+              }
             >
               <Hand size={20} />
               Receive Help
+              {giverMaturity?.has_active_giver_activity && !giverMaturity?.is_mature && giverMaturity?.time_to_maturity_seconds && (
+                <span className="text-xs ml-1">
+                  ({Math.ceil(giverMaturity.time_to_maturity_seconds / 86400)}d)
+                </span>
+              )}
             </button>
             <button
               onClick={() => setShowSettings(true)}
@@ -725,6 +771,27 @@ export const UserDashboard: React.FC = () => {
                     >
                       I Have Sent the Payment
                     </button>
+                    
+                    {/* Show maturity timer for giver after admin confirms */}
+                    {giverMaturity?.has_active_giver_activity && (
+                      <div className="mt-4 bg-slate-900/50 rounded p-3 border border-slate-600/30">
+                        <p className="text-slate-400 text-xs mb-2">Package Maturity Status</p>
+                        {giverMaturity.is_mature ? (
+                          <div>
+                            <p className="text-emerald-400 font-bold text-sm mb-1">✅ Matured - You can now request help!</p>
+                            <p className="text-slate-300 text-xs">Click "Receive Help" button above to get matched</p>
+                          </div>
+                        ) : (
+                          <div>
+                            <p className="text-amber-400 font-semibold text-sm mb-1">⏳ Maturing...</p>
+                            <p className="text-slate-300 text-xs">
+                              Time remaining: {Math.floor((giverMaturity.time_to_maturity_seconds || 0) / 86400)}d {Math.floor(((giverMaturity.time_to_maturity_seconds || 0) % 86400) / 3600)}h
+                            </p>
+                            <p className="text-slate-400 text-xs mt-1">You can request help after maturity</p>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
               )}

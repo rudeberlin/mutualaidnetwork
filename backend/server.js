@@ -640,6 +640,68 @@ app.get('/api/user/:userId/stats', authenticateToken, async (req, res) => {
       }
 });
 
+// Check giver maturity status (when giver can request help)
+app.get('/api/user/:userId/giver-maturity', authenticateToken, async (req, res) => {
+  try {
+    if (req.userId !== req.params.userId && req.userRole !== 'admin') {
+      return res.status(403).json({ success: false, error: 'Unauthorized' });
+    }
+    
+    const userId = req.params.userId;
+    
+    // Check if user has any active giver help_activities with maturity dates
+    const result = await pool.query(`
+      SELECT ha.id, ha.maturity_date, ha.status, ha.amount,
+             p.name as package_name,
+             CASE 
+               WHEN ha.maturity_date IS NULL THEN false
+               WHEN ha.maturity_date <= CURRENT_TIMESTAMP THEN true
+               ELSE false
+             END as is_mature,
+             CASE 
+               WHEN ha.maturity_date IS NULL THEN 0
+               ELSE GREATEST(0, EXTRACT(EPOCH FROM (ha.maturity_date - CURRENT_TIMESTAMP)))
+             END as time_to_maturity_seconds
+      FROM help_activities ha
+      LEFT JOIN packages p ON ha.package_id = p.id
+      WHERE ha.giver_id = $1 
+        AND ha.status = 'active'
+      ORDER BY ha.created_at DESC
+      LIMIT 1
+    `, [userId]);
+    
+    if (result.rows.length === 0) {
+      return res.json({ 
+        success: true, 
+        data: { 
+          has_active_giver_activity: false,
+          is_mature: false,
+          can_request_help: false
+        } 
+      });
+    }
+    
+    const activity = result.rows[0];
+    const canRequestHelp = activity.is_mature;
+    
+    res.json({ 
+      success: true, 
+      data: {
+        has_active_giver_activity: true,
+        is_mature: activity.is_mature,
+        can_request_help: canRequestHelp,
+        maturity_date: activity.maturity_date,
+        time_to_maturity_seconds: parseFloat(activity.time_to_maturity_seconds || 0),
+        package_name: activity.package_name,
+        amount: parseFloat(activity.amount || 0)
+      }
+    });
+  } catch (error) {
+    console.error('Giver maturity check error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // GET transactions for user
 app.get('/api/transactions/:userId', authenticateToken, async (req, res) => {
   try {
@@ -1368,29 +1430,116 @@ app.get('/api/admin/available-givers', authenticateToken, requireAdmin, async (r
 // Create payment match
 app.post('/api/admin/create-match', authenticateToken, requireAdmin, async (req, res) => {
   try {
-    const { giverId, receiverId, helpActivityId, amount } = req.body;
+    const { giverId, receiverId, helpActivityId, amount, packageId } = req.body;
     
     // Set payment deadline to 6 hours from now
     const paymentDeadline = new Date();
     paymentDeadline.setHours(paymentDeadline.getHours() + 6);
+    
+    // Get or create help activities for both giver and receiver
+    let giverActivityId = null;
+    let receiverActivityId = helpActivityId;
+    let finalPackageId = packageId;
+    let finalAmount = amount;
+    
+    // Check if helpActivityId exists and get its details
+    if (helpActivityId) {
+      const activityCheck = await pool.query(
+        'SELECT giver_id, receiver_id, package_id, amount FROM help_activities WHERE id = $1',
+        [helpActivityId]
+      );
+      
+      if (activityCheck.rows.length > 0) {
+        const activity = activityCheck.rows[0];
+        finalPackageId = finalPackageId || activity.package_id;
+        finalAmount = finalAmount || activity.amount;
+        
+        // If this activity belongs to the giver, it's the giver activity
+        if (activity.giver_id === giverId) {
+          giverActivityId = helpActivityId;
+          receiverActivityId = null;
+        } else if (activity.receiver_id === receiverId) {
+          receiverActivityId = helpActivityId;
+        }
+      }
+    }
+    
+    // Create giver help_activity if not exists
+    if (!giverActivityId) {
+      const giverActivity = await pool.query(`
+        INSERT INTO help_activities (id, giver_id, package_id, amount, status, created_at)
+        VALUES ($1, $2, $3, $4, 'matched', CURRENT_TIMESTAMP)
+        ON CONFLICT (id) DO NOTHING
+        RETURNING id
+      `, [uuidv4(), giverId, finalPackageId, finalAmount]);
+      
+      if (giverActivity.rows.length > 0) {
+        giverActivityId = giverActivity.rows[0].id;
+      } else {
+        // Check for existing giver activity
+        const existingGiver = await pool.query(
+          'SELECT id FROM help_activities WHERE giver_id = $1 AND status IN (\'pending\', \'matched\') ORDER BY created_at DESC LIMIT 1',
+          [giverId]
+        );
+        if (existingGiver.rows.length > 0) {
+          giverActivityId = existingGiver.rows[0].id;
+        }
+      }
+    }
+    
+    // Create receiver help_activity if not exists
+    if (!receiverActivityId) {
+      const receiverActivity = await pool.query(`
+        INSERT INTO help_activities (id, receiver_id, package_id, amount, status, created_at)
+        VALUES ($1, $2, $3, $4, 'matched', CURRENT_TIMESTAMP)
+        ON CONFLICT (id) DO NOTHING
+        RETURNING id
+      `, [uuidv4(), receiverId, finalPackageId, finalAmount]);
+      
+      if (receiverActivity.rows.length > 0) {
+        receiverActivityId = receiverActivity.rows[0].id;
+      } else {
+        // Check for existing receiver activity
+        const existingReceiver = await pool.query(
+          'SELECT id FROM help_activities WHERE receiver_id = $1 AND status IN (\'pending\', \'matched\') ORDER BY created_at DESC LIMIT 1',
+          [receiverId]
+        );
+        if (existingReceiver.rows.length > 0) {
+          receiverActivityId = existingReceiver.rows[0].id;
+        }
+      }
+    }
+    
+    // Use receiverActivityId as the primary help_activity_id for the match
+    const primaryActivityId = receiverActivityId || giverActivityId;
     
     // Create match record
     const matchResult = await pool.query(`
       INSERT INTO payment_matches (giver_id, receiver_id, help_activity_id, amount, payment_deadline, matched_by, status)
       VALUES ($1, $2, $3, $4, $5, $6, 'pending')
       RETURNING *
-    `, [giverId, receiverId, helpActivityId, amount, paymentDeadline, req.userId]);
+    `, [giverId, receiverId, primaryActivityId, finalAmount, paymentDeadline, req.userId]);
     
-    // Update help activity - set both giver_id and receiver_id, mark as matched
-    await pool.query(`
-      UPDATE help_activities 
-      SET giver_id = $1, receiver_id = $2, status = 'matched', matched_at = CURRENT_TIMESTAMP, payment_deadline = $3, admin_approved = true
-      WHERE id = $4
-    `, [giverId, receiverId, paymentDeadline, helpActivityId]);
+    // Update both giver and receiver help activities
+    if (giverActivityId) {
+      await pool.query(`
+        UPDATE help_activities 
+        SET receiver_id = $1, status = 'matched', matched_at = CURRENT_TIMESTAMP, payment_deadline = $2, admin_approved = true
+        WHERE id = $3
+      `, [receiverId, paymentDeadline, giverActivityId]);
+    }
+    
+    if (receiverActivityId && receiverActivityId !== giverActivityId) {
+      await pool.query(`
+        UPDATE help_activities 
+        SET giver_id = $1, status = 'matched', matched_at = CURRENT_TIMESTAMP, payment_deadline = $2, admin_approved = true
+        WHERE id = $3
+      `, [giverId, paymentDeadline, receiverActivityId]);
+    }
 
-    // Also ensure the matching giver activity and receiver activity are linked
     res.json({ success: true, data: matchResult.rows[0], message: 'Match created and saved successfully' });
   } catch (error) {
+    console.error('Manual match error:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
@@ -1473,6 +1622,82 @@ app.post('/api/admin/auto-match', authenticateToken, requireAdmin, async (req, r
     });
   } catch (error) {
     console.error('Auto-match error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Admin manually add user to giver queue
+app.post('/api/admin/add-to-giver-queue', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { userId, packageId, amount } = req.body;
+    
+    if (!userId || !amount) {
+      return res.status(400).json({ success: false, error: 'User ID and amount required' });
+    }
+    
+    // Check if user already has a pending giver activity
+    const existing = await pool.query(
+      'SELECT id FROM help_activities WHERE giver_id = $1 AND status = \\'pending\\' AND receiver_id IS NULL LIMIT 1',
+      [userId]
+    );
+    
+    if (existing.rows.length > 0) {
+      return res.status(400).json({ success: false, error: 'User already in giver queue' });
+    }
+    
+    // Create help activity as giver in pending state
+    const activityId = uuidv4();
+    const result = await pool.query(`
+      INSERT INTO help_activities (id, giver_id, package_id, amount, status, created_at, admin_approved)
+      VALUES ($1, $2, $3, $4, 'pending', CURRENT_TIMESTAMP, true)
+      RETURNING *
+    `, [activityId, userId, packageId, amount]);
+    
+    res.json({ 
+      success: true, 
+      data: result.rows[0],
+      message: 'User added to giver queue successfully' 
+    });
+  } catch (error) {
+    console.error('Add to giver queue error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Admin manually add user to receiver queue
+app.post('/api/admin/add-to-receiver-queue', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { userId, packageId, amount } = req.body;
+    
+    if (!userId || !amount) {
+      return res.status(400).json({ success: false, error: 'User ID and amount required' });
+    }
+    
+    // Check if user already has a pending receiver activity
+    const existing = await pool.query(
+      'SELECT id FROM help_activities WHERE receiver_id = $1 AND status = \\'pending\\' AND giver_id IS NULL LIMIT 1',
+      [userId]
+    );
+    
+    if (existing.rows.length > 0) {
+      return res.status(400).json({ success: false, error: 'User already in receiver queue' });
+    }
+    
+    // Create help activity as receiver in pending state
+    const activityId = uuidv4();
+    const result = await pool.query(`
+      INSERT INTO help_activities (id, receiver_id, package_id, amount, status, created_at, admin_approved)
+      VALUES ($1, $2, $3, $4, 'pending', CURRENT_TIMESTAMP, true)
+      RETURNING *
+    `, [activityId, userId, packageId, amount]);
+    
+    res.json({ 
+      success: true, 
+      data: result.rows[0],
+      message: 'User added to receiver queue successfully' 
+    });
+  } catch (error) {
+    console.error('Add to receiver queue error:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
@@ -1577,37 +1802,52 @@ app.get('/api/admin/payment-matches', authenticateToken, requireAdmin, async (re
 // Confirm payment completion
 app.post('/api/admin/payment-matches/:id/confirm', authenticateToken, requireAdmin, async (req, res) => {
   try {
-    const result = await pool.query(`
+    const matchResult = await pool.query(`
       UPDATE payment_matches 
       SET status = 'confirmed', completed_at = CURRENT_TIMESTAMP
       WHERE id = $1
       RETURNING *
     `, [req.params.id]);
     
-    if (result.rows.length === 0) {
+    if (matchResult.rows.length === 0) {
       return res.status(404).json({ success: false, error: 'Match not found' });
     }
+    
+    const match = matchResult.rows[0];
     
     // Get package duration to calculate maturity date
     const packageInfo = await pool.query(`
       SELECT p.duration_days 
       FROM help_activities ha
-      JOIN packages p ON ha.package_id = p.id
+      LEFT JOIN packages p ON ha.package_id = p.id
       WHERE ha.id = $1
-    `, [result.rows[0].help_activity_id]);
+    `, [match.help_activity_id]);
     
     const durationDays = packageInfo.rows[0]?.duration_days || 5;
     
-    // Update help activity status to 'active' and set maturity date
+    // Update the primary help activity (receiver's activity) status to 'active' and set maturity date
     await pool.query(`
       UPDATE help_activities 
       SET status = 'active', 
           maturity_date = CURRENT_TIMESTAMP + INTERVAL '${durationDays} days'
       WHERE id = $1
-    `, [result.rows[0].help_activity_id]);
+    `, [match.help_activity_id]);
     
-    res.json({ success: true, data: result.rows[0] });
+    // Also activate giver's help_activity and set their maturity date
+    // Giver's maturity determines when they can request help
+    await pool.query(`
+      UPDATE help_activities 
+      SET status = 'active', 
+          maturity_date = CURRENT_TIMESTAMP + INTERVAL '${durationDays} days'
+      WHERE giver_id = $1 
+        AND receiver_id = $2
+        AND status = 'matched'
+        AND id != $3
+    `, [match.giver_id, match.receiver_id, match.help_activity_id]);
+    
+    res.json({ success: true, data: matchResult.rows[0] });
   } catch (error) {
+    console.error('Confirm match error:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
