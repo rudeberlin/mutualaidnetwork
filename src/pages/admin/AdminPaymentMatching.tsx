@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import axios from 'axios';
 import { useAuthStore } from '../../store';
 import { Toast } from '../../components/Toast';
@@ -53,6 +53,7 @@ export const AdminPaymentMatching: React.FC = () => {
   const [showManualEntryModal, setShowManualEntryModal] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const { token } = useAuthStore();
+  const shouldAutoMatch = useRef(false);
   const [manualEntry, setManualEntry] = useState({
     username: '',
     role: 'receiver' as 'receiver' | 'giver',
@@ -114,6 +115,7 @@ export const AdminPaymentMatching: React.FC = () => {
       setToast({ message: `Match created: ${selectedGiver.full_name} → ${selectedReceiver.full_name}`, type: 'success' });
       setSelectedReceiver(null);
       setSelectedGiver(null);
+      shouldAutoMatch.current = false;
       fetchData();
     } catch (error: unknown) {
       if (axios.isAxiosError(error)) {
@@ -122,15 +124,16 @@ export const AdminPaymentMatching: React.FC = () => {
       } else {
         setToast({ message: 'Failed to create match', type: 'error' });
       }
+      shouldAutoMatch.current = false;
     }
   };
 
-  // Auto-create match when both selected (e.g., from modal click)
+  // Auto-create match when both selected from modal (not on manual button click)
   useEffect(() => {
-    if (selectedReceiver && selectedGiver) {
+    if (selectedReceiver && selectedGiver && shouldAutoMatch.current) {
       const timer = setTimeout(() => {
         handleCreateMatch();
-      }, 300); // Small delay to ensure state is updated
+      }, 100);
       return () => clearTimeout(timer);
     }
   }, [selectedReceiver, selectedGiver]);
@@ -495,6 +498,7 @@ export const AdminPaymentMatching: React.FC = () => {
                       <div
                         key={giver.id}
                         onClick={() => {
+                          shouldAutoMatch.current = true;
                           setSelectedReceiver(showAssignModal.data);
                           setSelectedGiver(giver);
                           setShowAssignModal(null);
@@ -523,6 +527,7 @@ export const AdminPaymentMatching: React.FC = () => {
                       <div
                         key={receiver.id}
                         onClick={() => {
+                          shouldAutoMatch.current = true;
                           setSelectedGiver(showAssignModal.data);
                           setSelectedReceiver(receiver);
                           setShowAssignModal(null);

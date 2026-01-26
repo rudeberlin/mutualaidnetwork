@@ -1376,8 +1376,8 @@ app.post('/api/admin/create-match', authenticateToken, requireAdmin, async (req,
     
     // Create match record
     const matchResult = await pool.query(`
-      INSERT INTO payment_matches (giver_id, receiver_id, help_activity_id, amount, payment_deadline, matched_by, status, admin_approved)
-      VALUES ($1, $2, $3, $4, $5, $6, 'pending', true)
+      INSERT INTO payment_matches (giver_id, receiver_id, help_activity_id, amount, payment_deadline, matched_by, status)
+      VALUES ($1, $2, $3, $4, $5, $6, 'pending')
       RETURNING *
     `, [giverId, receiverId, helpActivityId, amount, paymentDeadline, req.userId]);
     
@@ -1450,8 +1450,8 @@ app.post('/api/admin/auto-match', authenticateToken, requireAdmin, async (req, r
     const amount = activityResult.rows[0]?.amount || 100;
 
     const matchResult = await pool.query(`
-      INSERT INTO payment_matches (giver_id, receiver_id, help_activity_id, amount, payment_deadline, matched_by, status, admin_approved)
-      VALUES ($1, $2, $3, $4, $5, $6, 'pending', true)
+      INSERT INTO payment_matches (giver_id, receiver_id, help_activity_id, amount, payment_deadline, matched_by, status)
+      VALUES ($1, $2, $3, $4, $5, $6, 'pending')
       RETURNING *
     `, [giver.id, receiver.id, receiver.activity_id, amount, paymentDeadline, req.userId]);
 
