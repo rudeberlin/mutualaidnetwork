@@ -22,6 +22,18 @@ const API_URL = process.env.CLIENT_URL || `http://localhost:${PORT}`;
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// Helper function to sanitize image URLs
+function sanitizeImageUrl(url, baseUrl) {
+  if (!url) return '';
+  const urlStr = String(url).trim();
+  // Allow http(s), /path, data: URIs
+  if (urlStr.startsWith('http://') || urlStr.startsWith('https://')) return urlStr;
+  if (urlStr.startsWith('/')) return `${baseUrl}${urlStr}`;
+  if (urlStr.startsWith('data:')) return urlStr;
+  // Reject anything else (base64 without data:, 'base', etc.)
+  return '';
+}
+
 // Middleware
 // Ensure database tables and seed data are initialized on startup (idempotent)
 (async () => {
@@ -272,6 +284,9 @@ app.post('/api/register', upload.fields([{ name: 'idFront' }, { name: 'idBack' }
       newUser.display_id = displayId;
     }
     
+    // Sanitize image URLs using helper
+    const profilePhoto = sanitizeImageUrl(newUser.profile_photo, API_URL);
+    
     // Transform user object to camelCase for frontend
     const userResponse = {
       id: newUser.id,
@@ -284,11 +299,11 @@ app.post('/api/register', upload.fields([{ name: 'idFront' }, { name: 'idBack' }
       country: newUser.country,
       referralCode: newUser.referral_code,
       myReferralCode: newUser.my_referral_code,
-      profilePhoto: newUser.profile_photo,
+      profilePhoto: profilePhoto,
       role: newUser.role,
       idDocuments: {
-        frontImage: idFrontPath ? `${API_URL}${idFrontPath}` : '',
-        backImage: idBackPath ? `${API_URL}${idBackPath}` : '',
+        frontImage: sanitizeImageUrl(idFrontPath, API_URL),
+        backImage: sanitizeImageUrl(idBackPath, API_URL),
         uploadedAt: newUser.created_at,
         verified: false
       },
@@ -337,17 +352,10 @@ app.post('/api/login', async (req, res) => {
 
     const token = generateToken(user.id);
     
-    // Sanitize image URLs to prevent ENOTFOUND base errors
-    let frontImage = user.id_front_image ? `${API_URL}${user.id_front_image}` : '';
-    let backImage = user.id_back_image ? `${API_URL}${user.id_back_image}` : '';
-    
-    // Filter out invalid URLs (those starting with 'base' or not http/https//)
-    if (frontImage && !frontImage.startsWith('http') && !frontImage.startsWith('/') && !frontImage.startsWith('data:')) {
-      frontImage = '';
-    }
-    if (backImage && !backImage.startsWith('http') && !backImage.startsWith('/') && !backImage.startsWith('data:')) {
-      backImage = '';
-    }
+    // Sanitize image URLs using helper
+    const frontImage = sanitizeImageUrl(user.id_front_image, API_URL);
+    const backImage = sanitizeImageUrl(user.id_back_image, API_URL);
+    const profilePhoto = sanitizeImageUrl(user.profile_photo, API_URL);
     
     // Transform user object to camelCase for frontend
     const userResponse = {
@@ -361,7 +369,7 @@ app.post('/api/login', async (req, res) => {
       country: user.country,
       referralCode: user.referral_code,
       myReferralCode: user.my_referral_code,
-      profilePhoto: user.profile_photo,
+      profilePhoto: profilePhoto,
       role: user.role,
       idDocuments: {
         frontImage: frontImage,
@@ -827,7 +835,15 @@ app.get('/api/admin/users', authenticateToken, requireAdmin, async (req, res) =>
              id_front_image, id_back_image, created_at, updated_at
       FROM users 
       ORDER BY created_at DESC`);
-    res.json({ success: true, data: result.rows });
+    
+    // Sanitize image URLs to prevent ENOTFOUND base errors
+    const sanitizedData = result.rows.map(user => ({
+      ...user,
+      id_front_image: sanitizeImageUrl(user.id_front_image, API_URL),
+      id_back_image: sanitizeImageUrl(user.id_back_image, API_URL)
+    }));
+    
+    res.json({ success: true, data: sanitizedData });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
@@ -905,7 +921,15 @@ app.get('/api/admin/verifications', authenticateToken, requireAdmin, async (req,
       WHERE is_verified = false AND id_front_image IS NOT NULL
       ORDER BY created_at DESC
     `);
-    res.json({ success: true, data: result.rows });
+    
+    // Sanitize image URLs to prevent ENOTFOUND base errors
+    const sanitizedData = result.rows.map(user => ({
+      ...user,
+      id_front_image: sanitizeImageUrl(user.id_front_image, API_URL),
+      id_back_image: sanitizeImageUrl(user.id_back_image, API_URL)
+    }));
+    
+    res.json({ success: true, data: sanitizedData });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
