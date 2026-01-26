@@ -2204,13 +2204,21 @@ app.post('/api/user/complete-receive-cycle', authenticateToken, async (req, res)
     // Also mark the corresponding giver activity as completed
     // This allows the giver to offer help again
     if (receiverActivity.giver_id) {
-      await pool.query(`
-        UPDATE help_activities 
-        SET status = 'completed'
+      // First get the most recent giver activity
+      const giverActivityResult = await pool.query(`
+        SELECT id FROM help_activities 
         WHERE giver_id = $1 AND status IN ('matched', 'active')
         ORDER BY created_at DESC
         LIMIT 1
       `, [receiverActivity.giver_id]);
+      
+      if (giverActivityResult.rows.length > 0) {
+        await pool.query(`
+          UPDATE help_activities 
+          SET status = 'completed'
+          WHERE id = $1
+        `, [giverActivityResult.rows[0].id]);
+      }
     }
     
     res.json({ 
