@@ -137,6 +137,19 @@ export async function initializeDatabase() {
       ADD COLUMN IF NOT EXISTS admin_approved BOOLEAN DEFAULT FALSE
     `);
 
+    // Ensure required columns exist for manual matching and maturity tracking
+    await client.query(`
+      ALTER TABLE help_activities
+      ADD COLUMN IF NOT EXISTS maturity_date TIMESTAMP,
+      ADD COLUMN IF NOT EXISTS payment_deadline TIMESTAMP,
+      ADD COLUMN IF NOT EXISTS matched_at TIMESTAMP,
+      ADD COLUMN IF NOT EXISTS manual_entry BOOLEAN DEFAULT FALSE,
+      ADD COLUMN IF NOT EXISTS matched_with_name VARCHAR(255),
+      ADD COLUMN IF NOT EXISTS matched_with_email VARCHAR(255),
+      ADD COLUMN IF NOT EXISTS matched_with_phone VARCHAR(50),
+      ADD COLUMN IF NOT EXISTS payment_account TEXT
+    `);
+
     // Create user_packages table for tracking user subscriptions
     await client.query(`
       CREATE TABLE IF NOT EXISTS user_packages (

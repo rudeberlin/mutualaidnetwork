@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import jwt from 'jsonwebtoken';
 import bcryptjs from 'bcryptjs';
 import multer from 'multer';
+import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
@@ -56,6 +57,24 @@ if (!fs.existsSync(uploadsDir)) {
 
 app.use('/uploads', express.static('uploads'));
 
+// AWS S3 client (enabled when all required env vars are present)
+const s3Enabled = Boolean(
+  process.env.AWS_S3_BUCKET &&
+  process.env.AWS_REGION &&
+  process.env.AWS_ACCESS_KEY_ID &&
+  process.env.AWS_SECRET_ACCESS_KEY
+);
+
+const s3 = s3Enabled
+  ? new S3Client({
+      region: process.env.AWS_REGION,
+      credentials: {
+        accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY
+      }
+    })
+  : null;
+
 // JWT helpers
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
 
@@ -101,16 +120,8 @@ const requireAdmin = async (req, res, next) => {
   }
 };
 
-// Configure multer for file uploads
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, uploadsDir);
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
-  },
-});
+// Configure multer for file uploads (in-memory, then S3 or local fallback)
+const storage = multer.memoryStorage();
 
 const upload = multer({
   storage,
@@ -697,19 +708,55 @@ app.post('/api/help/request', authenticateToken, async (req, res) => {
 });
 
 // File upload endpoint
-app.post('/api/upload', upload.single('file'), (req, res) => {
+app.post('/api/upload', upload.single('file'), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ success: false, error: 'No file uploaded' });
     }
+    const originalName = req.file.originalname || 'upload';
+    const safeName = originalName.replace(/[^a-zA-Z0-9.\-_]/g, '_');
+    const key = `uploads/${Date.now()}-${uuidv4()}-${safeName}`;
 
-    res.json({
+    if (s3Enabled && s3) {
+      await s3.send(
+        new PutObjectCommand({
+          Bucket: process.env.AWS_S3_BUCKET,
+          Key: key,
+          Body: req.file.buffer,
+          ContentType: req.file.mimetype,
+          ACL: 'private'
+        })
+      );
+
+      const baseUrl =
+        process.env.AWS_S3_BASE_URL ||
+        `https://${process.env.AWS_S3_BUCKET}.s3.${process.env.AWS_REGION}.amazonaws.com`;
+      const fileUrl = `${baseUrl}/${key}`;
+
+      return res.json({
+        success: true,
+        data: {
+          filename: safeName,
+          path: fileUrl,
+          key,
+          size: req.file.size,
+          storage: 's3'
+        }
+      });
+    }
+
+    // Fallback to local disk storage for development
+    const localPath = path.join(uploadsDir, key.split('/').pop());
+    fs.writeFileSync(localPath, req.file.buffer);
+
+    return res.json({
       success: true,
       data: {
-        filename: req.file.filename,
-        path: `/uploads/${req.file.filename}`,
+        filename: safeName,
+        path: `/uploads/${path.basename(localPath)}`,
         size: req.file.size,
-      },
+        storage: 'local'
+      }
     });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
@@ -1239,9 +1286,10 @@ app.post('/api/admin/create-manual-match', authenticateToken, requireAdmin, asyn
       matchedWithName, matchedWithEmail, matchedWithPhone, 
       paymentAccount, paymentMethod 
     } = req.body;
+    const usernameInput = (username || '').trim();
     
     // Validate required fields
-    if (!username || !amount || !matchedWithName) {
+    if (!usernameInput || !amount || !matchedWithName) {
       return res.status(400).json({ 
         success: false, 
         error: 'Username, amount, and matched user name are required' 
@@ -1250,8 +1298,13 @@ app.post('/api/admin/create-manual-match', authenticateToken, requireAdmin, asyn
 
     // Look up user by username or display_id
     const userResult = await pool.query(
-      'SELECT id, user_number, display_id, full_name, email, phone_number, username FROM users WHERE LOWER(username) = LOWER($1) OR display_id = $1 OR CAST(user_number AS VARCHAR) = $1',
-      [username]
+      `SELECT id, user_number, display_id, full_name, email, phone_number, username
+       FROM users
+       WHERE LOWER(username) = LOWER($1)
+          OR LOWER(email) = LOWER($1)
+          OR display_id = $1
+          OR CAST(user_number AS VARCHAR) = $1`,
+      [usernameInput]
     );
     if (userResult.rows.length === 0) {
       return res.status(404).json({
