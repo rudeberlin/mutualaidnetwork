@@ -16,16 +16,23 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
-// Backend's own URL for constructing image paths (not CLIENT_URL!)
-const API_URL = process.env.BACKEND_URL 
+// Backend's own URL for constructing image paths (CRITICAL: must be valid http(s) URL)
+let API_URL = process.env.BACKEND_URL 
   || process.env.RENDER_EXTERNAL_URL 
   || (process.env.NODE_ENV === 'production' ? 'https://mutualaidnetwork.onrender.com' : `http://localhost:${PORT}`);
+
+// SAFETY CHECK: Validate API_URL is not malformed
+if (!API_URL || !String(API_URL).match(/^https?:\/\//i)) {
+  console.error('❌ CRITICAL: API_URL is invalid!', { raw: API_URL });
+  API_URL = 'https://mutualaidnetwork.onrender.com'; // Hard fallback
+}
 
 console.log('🔍 Backend API_URL Configuration:', {
   BACKEND_URL: process.env.BACKEND_URL || 'not set',
   RENDER_EXTERNAL_URL: process.env.RENDER_EXTERNAL_URL || 'not set',
   NODE_ENV: process.env.NODE_ENV || 'not set',
-  resolved_API_URL: API_URL
+  resolved_API_URL: API_URL,
+  is_valid: !!String(API_URL).match(/^https?:\/\//i)
 });
 
 // Get current directory
@@ -36,9 +43,19 @@ const __dirname = path.dirname(__filename);
 function sanitizeImageUrl(url, baseUrl) {
   if (!url) return '';
   const urlStr = String(url).trim();
+  
+  // Log suspicious URLs for debugging
+  if (!urlStr.match(/^(https?:|\/|data:)/i)) {
+    console.warn('⚠️  Suspicious URL detected in sanitizeImageUrl:', { url: urlStr, baseUrl });
+  }
+  
   // Allow http(s), /path, data: URIs
   if (urlStr.startsWith('http://') || urlStr.startsWith('https://')) return urlStr;
-  if (urlStr.startsWith('/')) return `${baseUrl}${urlStr}`;
+  if (urlStr.startsWith('/')) {
+    // Ensure baseUrl is valid before concatenating
+    const validBase = String(baseUrl).match(/^https?:\/\//i) ? baseUrl : 'https://mutualaidnetwork.onrender.com';
+    return `${validBase}${urlStr}`;
+  }
   if (urlStr.startsWith('data:')) return urlStr;
   // Reject anything else (base64 without data:, 'base', etc.)
   return '';
