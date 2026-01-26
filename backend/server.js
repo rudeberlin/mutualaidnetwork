@@ -2255,6 +2255,17 @@ app.post('/api/user/complete-receive-cycle', authenticateToken, async (req, res)
           WHERE id = $1
         `, [giverActivityResult.rows[0].id]);
       }
+      
+      // Create a NEW immediately-mature giver activity so they can request help right away
+      await pool.query(`
+        INSERT INTO help_activities (
+          id, giver_id, package_id, amount, status, admin_approved, 
+          maturity_date, created_at, updated_at
+        ) VALUES (
+          $1, $2, $3, $4, 'active', true,
+          CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+        )
+      `, [require('uuid').v4(), receiverActivity.giver_id, receiverActivity.package_id || 'pkg-1', 250]);
     }
     
     res.json({ 

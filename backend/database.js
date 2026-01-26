@@ -204,7 +204,7 @@ export async function initializeDatabase() {
     await client.query(`
       INSERT INTO packages (id, name, amount, return_percentage, duration_days, description, active)
       VALUES 
-        ('pkg-1', 'Basic Help', 250, 30, 3, 'Perfect for beginners', true),
+        ('pkg-1', 'Basic Help', 250, 30, 5, 'Perfect for beginners', true),
         ('pkg-2', 'Standard', 500, 30, 5, 'Great value package', true),
         ('pkg-3', 'Premium', 1500, 50, 15, 'Most popular choice', true),
         ('pkg-4', 'Elite Help', 2500, 50, 15, 'Premium package', true)
@@ -213,7 +213,8 @@ export async function initializeDatabase() {
         amount = EXCLUDED.amount,
         return_percentage = EXCLUDED.return_percentage,
         duration_days = EXCLUDED.duration_days,
-        description = EXCLUDED.description
+        description = EXCLUDED.description,
+        active = EXCLUDED.active
     `);
 
     // Seed default admin user if not exists
