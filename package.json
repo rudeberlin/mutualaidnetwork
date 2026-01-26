@@ -13,7 +13,8 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "check-env": "node check-env.js",
-    "deploy": "npm run build && git add . && git commit -m 'Production build' && git push origin master"
+    "deploy": "npm run build && git add . && git commit -m 'Production build' && git push origin master",
+    "migrate:old-users": "node backend/migrate_old_users.js"
   },
   "dependencies": {
     "cloudinary": "^1.41.0",
