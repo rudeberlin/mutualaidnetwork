@@ -11,6 +11,16 @@ import type {
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
+// Frontend guard: drop invalid image strings and attach API origin for relative paths
+const sanitizeImageUrl = (url?: string) => {
+  if (!url) return '';
+  const val = url.trim();
+  if (val.startsWith('http://') || val.startsWith('https://')) return val;
+  if (val.startsWith('/')) return `${API_URL}${val}`;
+  if (val.startsWith('data:')) return val;
+  return '';
+};
+
 interface RawUser {
   id: string;
   full_name: string;
@@ -109,8 +119,8 @@ export const adminService = {
       createdAt: new Date(u.created_at),
       updatedAt: new Date(u.updated_at || u.created_at),
       idDocuments: {
-        frontImage: u.id_front_image?.startsWith('/') ? `${API_URL}${u.id_front_image}` : u.id_front_image || '',
-        backImage: u.id_back_image?.startsWith('/') ? `${API_URL}${u.id_back_image}` : u.id_back_image || '',
+        frontImage: sanitizeImageUrl(u.id_front_image),
+        backImage: sanitizeImageUrl(u.id_back_image),
         uploadedAt: u.created_at ? new Date(u.created_at) : new Date(),
         verified: u.id_verified || false,
       },
@@ -129,8 +139,8 @@ export const adminService = {
       username: v.email.split('@')[0],
       profilePhoto: `https://api.dicebear.com/7.x/avataaars/svg?seed=${v.user_name}`,
       idType: 'ID Card',
-      frontImage: v.id_front_image?.startsWith('/') ? `${API_URL}${v.id_front_image}` : v.id_front_image || '',
-      backImage: v.id_back_image?.startsWith('/') ? `${API_URL}${v.id_back_image}` : v.id_back_image || '',
+      frontImage: sanitizeImageUrl(v.id_front_image),
+      backImage: sanitizeImageUrl(v.id_back_image),
       status: 'Pending',
       submittedAt: new Date(v.submitted_at),
     }));
