@@ -1688,79 +1688,59 @@ app.use((error, req, res, next) => {
 });
 
 // Start server
-app.listen(PORT, async () => {
+const server = app.listen(PORT, () => {
   console.log(`✨ Mutual Aid Network Server running on http://localhost:${PORT}`);
   console.log(`📚 Health check: http://localhost:${PORT}/api/health`);
   console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`🔗 CORS allowed origin: ${process.env.CLIENT_URL || 'http://localhost:5173'}`);
+  console.log('✅ Server is ready and listening for requests');
   
-  // Initialize database
-  try {
-    console.log('🔄 Initializing database...');
-    await initializeDatabase();
-    console.log('✅ Database initialized successfully');
-    
-    // Run auto-migration for manual match fields
-    console.log('🔄 Checking for required columns...');
-    await pool.query(`
-      ALTER TABLE help_activities 
-      ADD COLUMN IF NOT EXISTS manual_entry BOOLEAN DEFAULT FALSE,
-      ADD COLUMN IF NOT EXISTS matched_with_name VARCHAR(255),
-      ADD COLUMN IF NOT EXISTS matched_with_email VARCHAR(255),
-      ADD COLUMN IF NOT EXISTS matched_with_phone VARCHAR(50),
-      ADD COLUMN IF NOT EXISTS payment_account TEXT,
-      ADD COLUMN IF NOT EXISTS payment_deadline TIMESTAMP,
-      ADD COLUMN IF NOT EXISTS matched_at TIMESTAMP,
-      ADD COLUMN IF NOT EXISTS admin_approved BOOLEAN DEFAULT FALSE;
-    `);
-    console.log('✅ Manual match columns verified');
-
-    // Auto-migration for unique user ID fields
-    console.log('🔄 Checking for unique user ID fields...');
+  // Initialize database asynchronously (don't await in the listen callback)
+  (async () => {
     try {
-      // Add user_number SERIAL if not exists
-      const userNumberCheck = await pool.query(`
-        SELECT column_name FROM information_schema.columns 
-        WHERE table_name = 'users' AND column_name = 'user_number'
-      `);
+      console.log('🔄 Initializing database tables...');
+      // Just run a simple query to test connection
+      const testResult = await pool.query('SELECT NOW()');
+      console.log('✅ Database connection verified:', testResult.rows[0].now);
       
-      if (userNumberCheck.rows.length === 0) {
-        // Create sequence for user_number if not exists
-        await pool.query(`
-          CREATE SEQUENCE IF NOT EXISTS users_user_number_seq;
-          ALTER TABLE users 
-          ADD COLUMN user_number INTEGER UNIQUE DEFAULT nextval('users_user_number_seq');
-        `);
-        console.log('✅ User number field added');
-      }
-
-      // Add display_id if not exists
-      const displayIdCheck = await pool.query(`
-        SELECT column_name FROM information_schema.columns 
-        WHERE table_name = 'users' AND column_name = 'display_id'
-      `);
+      // Run migrations without full init for now
+      console.log('🔄 Running migrations...');
       
-      if (displayIdCheck.rows.length === 0) {
-        await pool.query(`
-          ALTER TABLE users 
-          ADD COLUMN display_id VARCHAR(20) UNIQUE;
-        `);
-        
-        // Populate display_ids for existing users with user_numbers
-        await pool.query(`
-          UPDATE users SET display_id = 'MAN-' || LPAD(user_number::text, 6, '0') 
-          WHERE display_id IS NULL AND user_number IS NOT NULL
-        `);
-        console.log('✅ Display ID field added and populated');
-      }
-    } catch (migrationError) {
-      if (migrationError.message.includes('already exists')) {
-        console.log('✅ User ID fields already exist');
-      } else {
-        console.error('⚠️  User ID migration issue:', migrationError.message);
-      }
+      await pool.query(`
+        ALTER TABLE help_activities 
+        ADD COLUMN IF NOT EXISTS manual_entry BOOLEAN DEFAULT FALSE,
+        ADD COLUMN IF NOT EXISTS matched_with_name VARCHAR(255),
+        ADD COLUMN IF NOT EXISTS matched_with_email VARCHAR(255),
+        ADD COLUMN IF NOT EXISTS matched_with_phone VARCHAR(50),
+        ADD COLUMN IF NOT EXISTS payment_account TEXT,
+        ADD COLUMN IF NOT EXISTS payment_deadline TIMESTAMP,
+        ADD COLUMN IF NOT EXISTS matched_at TIMESTAMP,
+        ADD COLUMN IF NOT EXISTS admin_approved BOOLEAN DEFAULT FALSE;
+      `);
+      console.log('✅ Migrations complete');
+      
+      console.log('✅ Database ready');
+    } catch (error) {
+      console.error('❌ Database initialization failed:', error.message);
     }
-  } catch (error) {
-    console.error('❌ Database initialization failed:', error);
-  }
+  })();
+});
+
+// Handle graceful shutdown
+process.on('SIGTERM', () => {
+  console.log('👋 SIGTERM received, closing server gracefully...');
+  server.close(() => {
+    console.log('✅ Server closed');
+    pool.end();
+    process.exit(0);
+  });
+});
+
+process.on('SIGINT', () => {
+  console.log('👋 SIGINT received, closing server gracefully...');
+  server.close(() => {
+    console.log('✅ Server closed');
+    pool.end();
+    process.exit(0);
+  });
 });

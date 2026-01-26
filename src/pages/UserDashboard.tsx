@@ -989,7 +989,13 @@ export const UserDashboard: React.FC = () => {
                     const accruedAmount = (pkg.amount * accruedReturnPercent) / 100;
                     
                     // Calculate maturity countdown
-                    const timeRemainingSeconds = pkg.time_remaining_seconds || 0;
+                    // Use backend-provided timer if present; otherwise derive from subscribed_at + duration_days
+                    const derivedRemaining = () => {
+                      const start = new Date(pkg.subscribed_at).getTime();
+                      const target = start + (pkg.duration_days || 0) * 24 * 60 * 60 * 1000;
+                      return Math.max(0, Math.floor((target - Date.now()) / 1000));
+                    };
+                    const timeRemainingSeconds = pkg.time_remaining_seconds ?? derivedRemaining();
                     const days = Math.floor(timeRemainingSeconds / 86400);
                     const hours = Math.floor((timeRemainingSeconds % 86400) / 3600);
                     const minutes = Math.floor((timeRemainingSeconds % 3600) / 60);
@@ -1014,7 +1020,7 @@ export const UserDashboard: React.FC = () => {
                           ></div>
                         </div>
                         {/* Maturity Timer */}
-                        {pkg.maturity_date && timeRemainingSeconds > 0 && (
+                        {timeRemainingSeconds > 0 && (
                           <div className="mt-2 pt-2 border-t border-slate-600/30">
                             <p className="text-slate-400 text-xs mb-1">Time to Maturity</p>
                             <div className="flex gap-2 text-center">
