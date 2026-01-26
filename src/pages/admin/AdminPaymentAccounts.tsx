@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import axios from 'axios';
 import { useAuthStore } from '../../store';
 import { Search, Edit2, Save, X, CreditCard, Phone } from 'lucide-react';
+import { API_URL } from '../../utils/apiUrl';
 
 interface PaymentAccountRow {
   id: string;
@@ -26,8 +27,6 @@ interface AccountFormState {
   bankName: string;
   phoneNumber: string;
 }
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 export const AdminPaymentAccounts: React.FC = () => {
   const { token } = useAuthStore();

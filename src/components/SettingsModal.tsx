@@ -3,14 +3,13 @@ import axios from 'axios';
 import { X, Mail, Phone, MapPin, Lock, User as UserIcon, AlertCircle, CheckCircle } from 'lucide-react';
 import type { User } from '../types';
 import { useAuthStore } from '../store';
+import { API_URL } from '../utils/apiUrl';
 
 interface SettingsModalProps {
   user: User | null;
   onClose: () => void;
   onSave?: (updates: Partial<User>) => void;
 }
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({ user, onClose, onSave }) => {
   const { setUser } = useAuthStore();

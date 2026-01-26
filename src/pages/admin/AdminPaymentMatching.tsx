@@ -4,8 +4,7 @@ import { useAuthStore } from '../../store';
 import { Toast } from '../../components/Toast';
 import { Link2, Clock, CheckCircle, Ban, X } from 'lucide-react';
 import { format, differenceInHours } from 'date-fns';
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+import { API_URL } from '../../utils/apiUrl';
 
 interface PendingReceiver {
   activity_id: string;

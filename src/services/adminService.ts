@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { API_URL } from '../utils/apiUrl';
 import type {
   AdminVerification,
   AdminHelpActivity,
@@ -8,8 +9,6 @@ import type {
   AdminReportPoint,
   User,
 } from '../types';
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 // Frontend guard: drop invalid image strings and attach API origin for relative paths
 const sanitizeImageUrl = (url?: string) => {

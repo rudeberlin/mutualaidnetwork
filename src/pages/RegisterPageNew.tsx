@@ -7,8 +7,7 @@ import { useAuthStore } from '../store';
 import { validateEmail, validatePassword } from '../utils/helpers';
 import { COUNTRIES } from '../utils/mockData';
 import type { User, RegistrationFormData } from '../types';
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+import { API_URL } from '../utils/apiUrl';
 
 export const RegisterPageNew: React.FC = () => {
   const [step, setStep] = useState<'account' | 'documents'>('account');

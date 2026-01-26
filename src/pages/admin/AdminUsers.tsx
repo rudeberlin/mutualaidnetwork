@@ -6,8 +6,7 @@ import { ShieldCheck, Ban, RefreshCw, Eye, X, Trash2 } from 'lucide-react';
 import { Toast } from '../../components/Toast';
 import { IDImageDisplay } from '../../components/IDImageDisplay';
 import { format } from 'date-fns';
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+import { API_URL } from '../../utils/apiUrl';
 
 export const AdminUsers: React.FC = () => {
   const { users, suspendUser, reactivateUser } = useAdminStore();

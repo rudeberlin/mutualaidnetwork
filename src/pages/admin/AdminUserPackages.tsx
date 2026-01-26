@@ -4,8 +4,7 @@ import { useAuthStore } from '../../store';
 import { Toast } from '../../components/Toast';
 import { CheckCircle, XCircle, RotateCcw, Calendar } from 'lucide-react';
 import { format } from 'date-fns';
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+import { API_URL } from '../../utils/apiUrl';
 
 interface UserPackage {
   id: number;

@@ -48,8 +48,7 @@ const parseStoredHelpStatus = (key: string): HelpStatus | null => {
   return null;
 };
 import { Settings, CreditCard, ArrowUpRight, ArrowDownLeft, TrendingUp, Plus, Hand, X, Check, Clock, Copy, Share2 } from 'lucide-react';
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+import { API_URL } from '../utils/apiUrl';
 
 export const UserDashboard: React.FC = () => {
   const [showSettings, setShowSettings] = useState(false);

@@ -5,8 +5,7 @@ import { Navbar } from '../components/Navbar';
 import { Testimonials } from '../components/Testimonials';
 import { useAuthStore } from '../store';
 import axios from 'axios';
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+import { API_URL } from '../utils/apiUrl';
 
 export const LoginPage: React.FC = () => {
   const [email, setEmail] = useState('');

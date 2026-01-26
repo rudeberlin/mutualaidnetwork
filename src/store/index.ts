@@ -5,9 +5,9 @@ import type {
   PaymentMethodConfig,
   MatchedMember
 } from '../types';
+import { API_URL } from '../utils/apiUrl';
 
 // Frontend-side image URL guard to avoid ENOTFOUND when stale data is in localStorage
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 const sanitizeImageUrl = (url?: string) => {
   if (!url) return '';
   const val = url.trim();
