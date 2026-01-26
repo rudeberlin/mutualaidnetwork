@@ -899,8 +899,40 @@ export const UserDashboard: React.FC = () => {
                               { headers: { Authorization: `Bearer ${token}` } }
                             );
                             if (response.data.success) {
-                              setToast({ message: 'Payment received confirmed! Pending admin verification.', type: 'success' });
-                              setTimeout(() => fetchPaymentMatchData(), 2000);
+                              setToast({ message: 'Payment received confirmed! Completing cycle...', type: 'success' });
+                              
+                              // Complete the receive cycle after a brief delay
+                              setTimeout(async () => {
+                                try {
+                                  await axios.post(
+                                    `${API_URL}/api/user/complete-receive-cycle`,
+                                    {},
+                                    { headers: { Authorization: `Bearer ${token}` } }
+                                  );
+                                  
+                                  // Reset all state to allow giver to offer help again
+                                  setReceiveHelpStatus(null);
+                                  setSelectedReceivePackage(null);
+                                  setPaymentMatch(null);
+                                  localStorage.removeItem('receiveHelpStatus');
+                                  localStorage.removeItem('selectedReceivePackage');
+                                  
+                                  setToast({ 
+                                    message: 'Cycle complete! ✅ You can now offer help again.', 
+                                    type: 'success' 
+                                  });
+                                  
+                                  // Refresh stats to show updated status
+                                  setTimeout(() => fetchPaymentMatchData(), 1000);
+                                } catch (cycleError: unknown) {
+                                  const err = cycleError as AxiosError<{ error?: string }>;
+                                  console.error('Complete cycle error:', err);
+                                  // Still reset state even if cycle endpoint fails
+                                  setReceiveHelpStatus(null);
+                                  setSelectedReceivePackage(null);
+                                  setPaymentMatch(null);
+                                }
+                              }, 1500);
                             }
                           } catch (error: unknown) {
                             const err = error as AxiosError<{ error?: string }>;

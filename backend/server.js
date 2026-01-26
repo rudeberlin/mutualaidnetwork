@@ -2082,6 +2082,19 @@ app.post('/api/user/payment-confirm', authenticateToken, async (req, res) => {
       );
       
       if (result.rows.length > 0) {
+        // If this is a receiver activity (user confirming they received payment),
+        // mark the related giver activity as completed
+        const activity = result.rows[0];
+        if (activity.receiver_id === req.userId && activity.giver_id) {
+          // Mark the corresponding giver activity as 'completed' to allow them to offer help again
+          await pool.query(
+            `UPDATE help_activities 
+             SET status = 'completed' 
+             WHERE giver_id = $1 AND receiver_id = $2 AND status = 'active' AND id != $3`,
+            [activity.giver_id, req.userId, matchId]
+          );
+        }
+        
         return res.json({ 
           success: true, 
           message: 'Payment confirmation submitted. Admin will verify.',
@@ -2156,6 +2169,57 @@ app.post('/api/user/confirm-payment-sent', authenticateToken, async (req, res) =
     // Match not found in either table
     res.status(404).json({ success: false, error: 'Match not found' });
   } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Complete receiver cycle - marks old giver activity as completed when receiver confirms payment receipt
+// This allows the giver to start a new offer help cycle
+app.post('/api/user/complete-receive-cycle', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.userId;
+    
+    // Find any active receiver help_activity for this user
+    const receiverActivityResult = await pool.query(`
+      SELECT id, giver_id FROM help_activities 
+      WHERE receiver_id = $1 AND status = 'active'
+      ORDER BY created_at DESC
+      LIMIT 1
+    `, [userId]);
+    
+    if (receiverActivityResult.rows.length === 0) {
+      return res.status(400).json({ success: false, error: 'No active receive activity found' });
+    }
+    
+    const receiverActivity = receiverActivityResult.rows[0];
+    
+    // Mark this receiver activity as completed
+    const completedReceiver = await pool.query(`
+      UPDATE help_activities 
+      SET status = 'completed'
+      WHERE id = $1
+      RETURNING *
+    `, [receiverActivity.id]);
+    
+    // Also mark the corresponding giver activity as completed
+    // This allows the giver to offer help again
+    if (receiverActivity.giver_id) {
+      await pool.query(`
+        UPDATE help_activities 
+        SET status = 'completed'
+        WHERE giver_id = $1 AND status IN ('matched', 'active')
+        ORDER BY created_at DESC
+        LIMIT 1
+      `, [receiverActivity.giver_id]);
+    }
+    
+    res.json({ 
+      success: true,
+      message: 'Receive cycle completed! You can now offer help again.',
+      data: completedReceiver.rows[0]
+    });
+  } catch (error) {
+    console.error('Complete receive cycle error:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
