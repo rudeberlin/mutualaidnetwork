@@ -1250,8 +1250,8 @@ app.post('/api/admin/create-manual-match', authenticateToken, requireAdmin, asyn
 
     // Look up user by username or display_id
     const userResult = await pool.query(
-      'SELECT id, user_number, display_id, full_name, email, phone_number FROM users WHERE username = $1 OR display_id = $1 OR user_number = $2',
-      [username, parseInt(username) || null]
+      'SELECT id, user_number, display_id, full_name, email, phone_number, username FROM users WHERE LOWER(username) = LOWER($1) OR display_id = $1 OR CAST(user_number AS VARCHAR) = $1',
+      [username]
     );
     if (userResult.rows.length === 0) {
       return res.status(404).json({

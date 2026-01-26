@@ -470,11 +470,6 @@ export const UserDashboard: React.FC = () => {
                     </span>
                   )}
                 </p>
-                {currentUser.displayId && (
-                  <span className="px-3 py-1 bg-blue-500/20 border border-blue-400/50 rounded-full text-blue-300 text-sm font-mono">
-                    ID: {currentUser.displayId}
-                  </span>
-                )}
               </div>
             </div>
           </div>
