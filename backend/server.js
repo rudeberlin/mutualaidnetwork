@@ -283,21 +283,37 @@ app.post('/api/register', upload.fields([{ name: 'idFront' }, { name: 'idBack' }
 
     console.log('ID Upload - Front:', idFrontPath, 'Back:', idBackPath);
 
-    const result = await pool.query(`
-      INSERT INTO users (
-        id, full_name, username, email, phone_number, country, referral_code, 
-        my_referral_code, password_hash, profile_photo, role, 
-        id_front_image, id_back_image, id_verified, is_verified, 
-        payment_method_verified, total_earnings
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
-      RETURNING id, user_number, display_id, full_name, username, email, phone_number, country, my_referral_code, profile_photo, role, is_verified, payment_method_verified, total_earnings, created_at
-    `, [
-      userId, fullName, username, email, phoneNumber, country, referralCode || null,
-      userReferralCode, hashedPassword, profilePhoto, 'member',
-      idFrontPath,
-      idBackPath,
-      false, false, false, 0
-    ]);
+    let result;
+    let hasRetriedUserNumber = false;
+
+    while (true) {
+      try {
+        result = await pool.query(`
+          INSERT INTO users (
+            id, full_name, username, email, phone_number, country, referral_code, 
+            my_referral_code, password_hash, profile_photo, role, 
+            id_front_image, id_back_image, id_verified, is_verified, 
+            payment_method_verified, total_earnings
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+          RETURNING id, user_number, display_id, full_name, username, email, phone_number, country, my_referral_code, profile_photo, role, is_verified, payment_method_verified, total_earnings, created_at
+        `, [
+          userId, fullName, username, email, phoneNumber, country, referralCode || null,
+          userReferralCode, hashedPassword, profilePhoto, 'member',
+          idFrontPath,
+          idBackPath,
+          false, false, false, 0
+        ]);
+        break; // success
+      } catch (e) {
+        // If sequence is out of sync causing duplicate user_number, realign and retry once
+        if (!hasRetriedUserNumber && e.code === '23505' && e.constraint && e.constraint.includes('users_user_number_key')) {
+          hasRetriedUserNumber = true;
+          await pool.query("SELECT setval('users_user_number_seq', (SELECT COALESCE(MAX(user_number),0)+1 FROM users), false);");
+          continue;
+        }
+        throw e;
+      }
+    }
 
     const token = generateToken(userId);
     
