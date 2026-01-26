@@ -83,6 +83,12 @@ export async function initializeDatabase() {
       )
     `);
 
+    // Ensure expected columns exist (idempotent migrations)
+    await client.query(`
+      ALTER TABLE packages
+        ADD COLUMN IF NOT EXISTS active BOOLEAN DEFAULT TRUE
+    `);
+
     // Create payment_methods table
     await client.query(`
       CREATE TABLE IF NOT EXISTS payment_methods (
