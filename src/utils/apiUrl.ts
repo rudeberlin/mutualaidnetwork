@@ -7,9 +7,14 @@ const FALLBACK = 'https://mutualaidnetwork.onrender.com';
 export const API_URL = raw && /^https?:\/\//i.test(raw) ? raw : FALLBACK;
 
 // Debug log for production troubleshooting
-console.log('🔍 API_URL Configuration:', {
-  raw: raw || 'undefined',
-  validated: API_URL,
-  isValid: raw ? /^https?:\/\//i.test(raw) : false,
-  usingFallback: API_URL === FALLBACK
-});
+if (typeof window !== 'undefined') {
+  console.log('🔍 Frontend API_URL Configuration:', {
+    raw_env: raw || 'undefined',
+    raw_length: raw ? raw.length : 0,
+    raw_first_50_chars: raw ? raw.substring(0, 50) : 'undefined',
+    validated: API_URL,
+    isValid: raw ? /^https?:\/\//i.test(raw) : false,
+    usingFallback: API_URL === FALLBACK,
+    env_keys: Object.keys(import.meta.env).filter(k => k.includes('API') || k.includes('VITE'))
+  });
+}
