@@ -161,6 +161,10 @@ app.get('/api/packages', async (req, res) => {
     const msg = String(error?.message || '').toLowerCase();
     if (msg.includes('column') && msg.includes('active') || msg.includes('does not exist') && msg.includes('packages')) {
       try {
+        // Ensure table exists by initializing database if relation not found
+        if (msg.includes('does not exist') && msg.includes('packages')) {
+          await initializeDatabase();
+        }
         await pool.query('ALTER TABLE packages ADD COLUMN IF NOT EXISTS active BOOLEAN DEFAULT TRUE');
         const retry = await pool.query('SELECT * FROM packages WHERE active = true ORDER BY amount ASC');
         return res.json({ success: true, data: retry.rows });
