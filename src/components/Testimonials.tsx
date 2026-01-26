@@ -34,6 +34,111 @@ const defaultTestimonials: Testimonial[] = [
     content: "Outstanding platform! Quick verification, flexible payment methods, and a genuine community of people who care about each other's success.",
     image: "/owner-profile-3.svg",
     rating: 5
+  },
+  {
+    name: "Kofi Asante",
+    role: "Premium Member",
+    content: "I started with the Basic Help package and now I'm on Elite! The earnings are real and the community support is incredible. Best decision I made this year.",
+    image: "/owner-profile-1.svg",
+    rating: 5
+  },
+  {
+    name: "Abena Osei",
+    role: "Verified Helper",
+    content: "As a single mother, this platform has been a blessing. I've helped others while securing my family's future. The admin team is professional and responsive.",
+    image: "/owner-profile-2.svg",
+    rating: 5
+  },
+  {
+    name: "Yaw Adomako",
+    role: "Elite Member",
+    content: "I was skeptical at first, but after seeing my first maturity payout, I'm convinced. The system is transparent, secure, and genuinely helps people.",
+    image: "/owner-profile-3.svg",
+    rating: 5
+  },
+  {
+    name: "Akosua Darko",
+    role: "Active Supporter",
+    content: "The verification process gave me confidence. I've successfully completed 8 packages and helped 12 members. This is mutual aid done right!",
+    image: "/owner-profile-1.svg",
+    rating: 5
+  },
+  {
+    name: "Kwame Ofori",
+    role: "Standard Member",
+    content: "Fast matching, secure payments, and genuine returns. I've recommended this platform to all my friends and family. Worth every cedi!",
+    image: "/owner-profile-2.svg",
+    rating: 5
+  },
+  {
+    name: "Adwoa Agyeman",
+    role: "Community Leader",
+    content: "This platform embodies true community spirit. I've seen members grow from Basic to Elite packages. The transparency and trust here are unmatched.",
+    image: "/owner-profile-3.svg",
+    rating: 5
+  },
+  {
+    name: "Samuel Appiah",
+    role: "Verified Giver",
+    content: "I love being able to help others while earning returns. The 6-hour matching system is efficient and the admin verification process ensures safety.",
+    image: "/owner-profile-1.svg",
+    rating: 5
+  },
+  {
+    name: "Maame Serwaa",
+    role: "Premium Helper",
+    content: "Joined 3 months ago with Basic Help, now I'm on my second Premium package! The maturity payouts are always on time. Highly recommend!",
+    image: "/owner-profile-2.svg",
+    rating: 5
+  },
+  {
+    name: "Nana Owusu",
+    role: "Elite Supporter",
+    content: "The Elite package has been life-changing. Professional platform, excellent support, and the community is genuinely supportive. Five stars!",
+    image: "/owner-profile-3.svg",
+    rating: 5
+  },
+  {
+    name: "Adjoa Boateng",
+    role: "Active Member",
+    content: "I was looking for a trustworthy platform and found it here. Clear terms, fast processing, and real results. My family is grateful!",
+    image: "/owner-profile-1.svg",
+    rating: 5
+  },
+  {
+    name: "Kojo Mensah",
+    role: "Verified Member",
+    content: "The payment matching system is genius! I've never waited more than a few hours to be matched. This is how community support should work.",
+    image: "/owner-profile-2.svg",
+    rating: 5
+  },
+  {
+    name: "Esi Annan",
+    role: "Standard Helper",
+    content: "Started small with ₵250 and now I'm confidently helping others with bigger packages. The platform grows with you. Absolutely love it!",
+    image: "/owner-profile-3.svg",
+    rating: 5
+  },
+  {
+    name: "Fiifi Cobbinah",
+    role: "Premium Member",
+    content: "Security, transparency, and real returns - this platform delivers on all fronts. The admin panel is professional and the support is top-notch.",
+    image: "/owner-profile-1.svg",
+    rating: 5
+  },
+  {
+    name: "Akua Danso",
+    role: "Community Member",
+    content: "I've completed 5 packages successfully. Each time the process was smooth and payouts were accurate. This is the real deal!",
+    image: "/owner-profile-2.svg",
+    rating: 5
+  },
+  {
+    name: "Yaa Nkrumah",
+    role: "Elite Member",
+    content: "From Basic to Elite in 4 months! The platform is legit, the community is supportive, and the earnings are consistent. Can't ask for more!",
+    image: "/owner-profile-3.svg",
+    rating: 5
   }
 ];
 

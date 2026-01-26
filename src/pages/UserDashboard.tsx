@@ -907,7 +907,7 @@ export const UserDashboard: React.FC = () => {
                         <p className={`text-sm font-bold ${
                           txn.type === 'DEPOSIT' || txn.type === 'HELP_RECEIVED' ? 'text-emerald-400' : 'text-white'
                         }`}>
-                          {txn.type === 'DEPOSIT' || txn.type === 'HELP_RECEIVED' ? '+' : '-'}${txn.amount}
+                          {txn.type === 'DEPOSIT' || txn.type === 'HELP_RECEIVED' ? '+' : '-'}₵{txn.amount}
                         </p>
                         <p className={`text-xs ${
                           txn.status === 'COMPLETED' ? 'text-emerald-400' : 'text-amber-400'
