@@ -3,6 +3,8 @@
  * Handles image upload, processing, and display for ID verification
  */
 
+import { API_URL } from '../utils/apiUrl';
+
 export interface ImageUploadResponse {
   success: boolean;
   path: string;
@@ -19,7 +21,7 @@ export interface ImageDisplayOptions {
 }
 
 class ImageHandlerService {
-  private readonly API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+  private readonly BASE_API_URL = API_URL;
   private readonly MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
   private readonly ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 
@@ -39,7 +41,7 @@ class ImageHandlerService {
       formData.append('file', file);
 
       // Upload to server
-      const response = await fetch(`${this.API_URL}/api/upload`, {
+      const response = await fetch(`${this.BASE_API_URL}/api/upload`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -118,7 +120,7 @@ class ImageHandlerService {
       large: 'w=600&h=600',
     };
 
-    let url = `${this.API_URL}${imagePath}`;
+    let url = `${this.BASE_API_URL}${imagePath}`;
 
     // Add query parameters for optimization
     const params = [

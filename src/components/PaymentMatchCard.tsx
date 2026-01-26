@@ -3,6 +3,7 @@ import { Clock, User, Phone, CreditCard, CheckCircle, AlertCircle } from 'lucide
 import { differenceInHours, differenceInMinutes, format } from 'date-fns';
 import axios from 'axios';
 import { useAuthStore } from '../store';
+import { API_URL } from '../utils/apiUrl';
 
 interface PaymentMatch {
   id: string | number;
@@ -31,7 +32,7 @@ export const PaymentMatchCard: React.FC = () => {
     
     try {
       const response = await axios.get(
-        `${import.meta.env.VITE_API_URL}/api/user/${user.id}/payment-match`,
+        `${API_URL}/api/user/${user.id}/payment-match`,
         {
           headers: { Authorization: `Bearer ${token}` }
         }
