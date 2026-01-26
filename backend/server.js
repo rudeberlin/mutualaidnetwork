@@ -151,6 +151,25 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'Server is running' });
 });
 
+// TEMP: Debug endpoint to inspect packages table
+app.get('/api/debug/packages', async (req, res) => {
+  try {
+    const cols = await pool.query(
+      `SELECT column_name, data_type FROM information_schema.columns WHERE table_schema='public' AND table_name='packages' ORDER BY ordinal_position`
+    );
+    let count = 0;
+    try {
+      const cnt = await pool.query('SELECT COUNT(*) AS c FROM packages');
+      count = parseInt(cnt.rows[0].c, 10);
+    } catch (e) {
+      // ignore count error if table missing
+    }
+    res.json({ success: true, columns: cols.rows, rowCount: count });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // GET all packages
 app.get('/api/packages', async (req, res) => {
   try {
@@ -318,6 +337,18 @@ app.post('/api/login', async (req, res) => {
 
     const token = generateToken(user.id);
     
+    // Sanitize image URLs to prevent ENOTFOUND base errors
+    let frontImage = user.id_front_image ? `${API_URL}${user.id_front_image}` : '';
+    let backImage = user.id_back_image ? `${API_URL}${user.id_back_image}` : '';
+    
+    // Filter out invalid URLs (those starting with 'base' or not http/https//)
+    if (frontImage && !frontImage.startsWith('http') && !frontImage.startsWith('/') && !frontImage.startsWith('data:')) {
+      frontImage = '';
+    }
+    if (backImage && !backImage.startsWith('http') && !backImage.startsWith('/') && !backImage.startsWith('data:')) {
+      backImage = '';
+    }
+    
     // Transform user object to camelCase for frontend
     const userResponse = {
       id: user.id,
@@ -333,8 +364,8 @@ app.post('/api/login', async (req, res) => {
       profilePhoto: user.profile_photo,
       role: user.role,
       idDocuments: {
-        frontImage: user.id_front_image ? `${API_URL}${user.id_front_image}` : '',
-        backImage: user.id_back_image ? `${API_URL}${user.id_back_image}` : '',
+        frontImage: frontImage,
+        backImage: backImage,
         uploadedAt: user.created_at,
         verified: user.id_verified
       },
