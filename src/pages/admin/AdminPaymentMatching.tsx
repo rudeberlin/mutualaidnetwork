@@ -125,6 +125,16 @@ export const AdminPaymentMatching: React.FC = () => {
     }
   };
 
+  // Auto-create match when both selected (e.g., from modal click)
+  useEffect(() => {
+    if (selectedReceiver && selectedGiver) {
+      const timer = setTimeout(() => {
+        handleCreateMatch();
+      }, 300); // Small delay to ensure state is updated
+      return () => clearTimeout(timer);
+    }
+  }, [selectedReceiver, selectedGiver]);
+
   const handleConfirmPayment = async (matchId: number) => {
     try {
       await axios.post(
@@ -231,13 +241,39 @@ export const AdminPaymentMatching: React.FC = () => {
         <p className="text-emerald-300 text-sm">Match users for payments</p>
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold text-white">Payment Matching</h1>
-          <button
-            onClick={() => setShowManualEntryModal(true)}
-            className="px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white font-semibold rounded-lg transition flex items-center gap-2"
-          >
-            <Link2 size={18} />
-            Manual Entry
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={async () => {
+                try {
+                  await axios.post(
+                    `${API_URL}/api/admin/auto-match`,
+                    {},
+                    { headers: { Authorization: `Bearer ${token}` } }
+                  );
+                  setToast({ message: 'Automatic matching completed!', type: 'success' });
+                  fetchData();
+                } catch (error: unknown) {
+                  if (axios.isAxiosError(error)) {
+                    const errorMsg = error.response?.data?.error || error.message || 'Auto-matching failed';
+                    setToast({ message: errorMsg, type: 'error' });
+                  } else {
+                    setToast({ message: 'Auto-matching failed', type: 'error' });
+                  }
+                }
+              }}
+              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg transition flex items-center gap-2"
+            >
+              <Link2 size={18} />
+              Auto Match
+            </button>
+            <button
+              onClick={() => setShowManualEntryModal(true)}
+              className="px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white font-semibold rounded-lg transition flex items-center gap-2"
+            >
+              <Link2 size={18} />
+              Manual Entry
+            </button>
+          </div>
         </div>
       </div>
 

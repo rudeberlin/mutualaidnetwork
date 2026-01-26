@@ -1395,6 +1395,88 @@ app.post('/api/admin/create-match', authenticateToken, requireAdmin, async (req,
   }
 });
 
+// Automatic payment matching - matches first available giver with first available receiver
+app.post('/api/admin/auto-match', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    // Get first pending receiver
+    const receiverResult = await pool.query(`
+      SELECT id, full_name, email, phone_number, activity_id
+      FROM (
+        SELECT 
+          u.id, u.full_name, u.email, u.phone_number, ha.id as activity_id
+        FROM help_activities ha
+        JOIN users u ON ha.receiver_id = u.id
+        WHERE ha.status = 'pending' 
+          AND ha.receiver_id IS NOT NULL
+          AND u.payment_method_verified = true
+        ORDER BY ha.created_at ASC
+        LIMIT 1
+      ) sub
+    `);
+    
+    if (receiverResult.rows.length === 0) {
+      return res.status(400).json({ success: false, error: 'No pending receivers available' });
+    }
+
+    const receiver = receiverResult.rows[0];
+
+    // Get first available giver with matching amount
+    const giverResult = await pool.query(`
+      SELECT id, full_name, email, phone_number, total_earnings
+      FROM users
+      WHERE id != $1
+        AND payment_method_verified = true
+        AND total_earnings > 0
+        AND is_verified = true
+      ORDER BY total_earnings DESC, created_at ASC
+      LIMIT 1
+    `, [receiver.id]);
+
+    if (giverResult.rows.length === 0) {
+      return res.status(400).json({ success: false, error: 'No available givers' });
+    }
+
+    const giver = giverResult.rows[0];
+
+    // Create match using the same logic as manual match
+    const paymentDeadline = new Date();
+    paymentDeadline.setHours(paymentDeadline.getHours() + 6);
+
+    // Get the help activity amount
+    const activityResult = await pool.query(`
+      SELECT amount FROM help_activities WHERE id = $1
+    `, [receiver.activity_id]);
+
+    const amount = activityResult.rows[0]?.amount || 100;
+
+    const matchResult = await pool.query(`
+      INSERT INTO payment_matches (giver_id, receiver_id, help_activity_id, amount, payment_deadline, matched_by, status, admin_approved)
+      VALUES ($1, $2, $3, $4, $5, $6, 'pending', true)
+      RETURNING *
+    `, [giver.id, receiver.id, receiver.activity_id, amount, paymentDeadline, req.userId]);
+
+    // Update help activity
+    await pool.query(`
+      UPDATE help_activities 
+      SET giver_id = $1, receiver_id = $2, status = 'matched', matched_at = CURRENT_TIMESTAMP, payment_deadline = $3, admin_approved = true
+      WHERE id = $4
+    `, [giver.id, receiver.id, paymentDeadline, receiver.activity_id]);
+
+    res.json({ 
+      success: true, 
+      data: {
+        giver: giver.full_name,
+        receiver: receiver.full_name,
+        amount: amount,
+        message: `Auto-matched ${giver.full_name} (giver) with ${receiver.full_name} (receiver)`
+      }
+    });
+  } catch (error) {
+    console.error('Auto-match error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // Create manual payment match
 app.post('/api/admin/create-manual-match', authenticateToken, requireAdmin, async (req, res) => {
   try {
