@@ -17,7 +17,16 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 // Backend's own URL for constructing image paths (not CLIENT_URL!)
-const API_URL = process.env.BACKEND_URL || process.env.RENDER_EXTERNAL_URL || `http://localhost:${PORT}`;
+const API_URL = process.env.BACKEND_URL 
+  || process.env.RENDER_EXTERNAL_URL 
+  || (process.env.NODE_ENV === 'production' ? 'https://mutualaidnetwork.onrender.com' : `http://localhost:${PORT}`);
+
+console.log('🔍 Backend API_URL Configuration:', {
+  BACKEND_URL: process.env.BACKEND_URL || 'not set',
+  RENDER_EXTERNAL_URL: process.env.RENDER_EXTERNAL_URL || 'not set',
+  NODE_ENV: process.env.NODE_ENV || 'not set',
+  resolved_API_URL: API_URL
+});
 
 // Get current directory
 const __filename = fileURLToPath(import.meta.url);
