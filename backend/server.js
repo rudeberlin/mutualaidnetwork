@@ -16,7 +16,8 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
-const API_URL = process.env.CLIENT_URL || `http://localhost:${PORT}`;
+// Backend's own URL for constructing image paths (not CLIENT_URL!)
+const API_URL = process.env.BACKEND_URL || process.env.RENDER_EXTERNAL_URL || `http://localhost:${PORT}`;
 
 // Get current directory
 const __filename = fileURLToPath(import.meta.url);
