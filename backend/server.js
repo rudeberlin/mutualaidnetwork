@@ -23,6 +23,16 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Middleware
+// Ensure database tables and seed data are initialized on startup (idempotent)
+(async () => {
+  try {
+    await initializeDatabase();
+    console.log('✅ Database initialized');
+  } catch (err) {
+    console.error('❌ Database init error:', err);
+  }
+})();
+
 const allowedOrigins = [
   process.env.CLIENT_URL,
   'http://localhost:5173',
