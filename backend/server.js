@@ -284,8 +284,8 @@ app.post('/api/register', upload.fields([{ name: 'idFront' }, { name: 'idBack' }
       newUser.display_id = displayId;
     }
     
-    // Sanitize image URLs using helper
-    const profilePhoto = sanitizeImageUrl(newUser.profile_photo, API_URL);
+    // Sanitize image URLs using helper (overwrite initial profilePhoto with sanitized version)
+    const sanitizedProfilePhoto = sanitizeImageUrl(newUser.profile_photo, API_URL);
     
     // Transform user object to camelCase for frontend
     const userResponse = {
@@ -299,7 +299,7 @@ app.post('/api/register', upload.fields([{ name: 'idFront' }, { name: 'idBack' }
       country: newUser.country,
       referralCode: newUser.referral_code,
       myReferralCode: newUser.my_referral_code,
-      profilePhoto: profilePhoto,
+      profilePhoto: sanitizedProfilePhoto,
       role: newUser.role,
       idDocuments: {
         frontImage: sanitizeImageUrl(idFrontPath, API_URL),
