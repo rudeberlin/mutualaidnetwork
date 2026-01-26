@@ -406,9 +406,17 @@ app.get('/api/user/:id', authenticateToken, async (req, res) => {
       return res.status(404).json({ success: false, error: 'User not found' });
     }
 
+    const user = result.rows[0];
+    
+    // Sanitize profile photo to prevent ENOTFOUND base errors
+    const sanitizedUser = {
+      ...user,
+      profile_photo: sanitizeImageUrl(user.profile_photo, API_URL)
+    };
+
     res.json({
       success: true,
-      data: result.rows[0],
+      data: sanitizedUser,
     });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
