@@ -155,12 +155,26 @@ app.get('/api/health', (req, res) => {
 app.get('/api/packages', async (req, res) => {
   try {
     const result = await pool.query('SELECT * FROM packages WHERE active = true ORDER BY amount ASC');
-    res.json({
-      success: true,
-      data: result.rows,
-    });
+    return res.json({ success: true, data: result.rows });
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    // If 'active' column is missing or relation error, attempt to migrate and retry
+    const msg = String(error?.message || '').toLowerCase();
+    if (msg.includes('column') && msg.includes('active') || msg.includes('does not exist') && msg.includes('packages')) {
+      try {
+        await pool.query('ALTER TABLE packages ADD COLUMN IF NOT EXISTS active BOOLEAN DEFAULT TRUE');
+        const retry = await pool.query('SELECT * FROM packages WHERE active = true ORDER BY amount ASC');
+        return res.json({ success: true, data: retry.rows });
+      } catch (retryErr) {
+        // Fallback: return packages without active filter
+        try {
+          const all = await pool.query('SELECT * FROM packages ORDER BY amount ASC');
+          return res.json({ success: true, data: all.rows, note: 'returned without active filter' });
+        } catch (allErr) {
+          return res.status(500).json({ success: false, error: allErr.message });
+        }
+      }
+    }
+    return res.status(500).json({ success: false, error: error.message });
   }
 });
 
