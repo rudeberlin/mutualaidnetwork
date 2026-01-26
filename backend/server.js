@@ -1631,15 +1631,10 @@ app.post('/api/admin/add-to-giver-queue', authenticateToken, requireAdmin, async
   try {
     const { userId, packageId, amount } = req.body;
     
-    if (!userId || !amount) {
-      return res.status(400).json({ success: false, error: 'User ID and amount required' });
-    }
-    
     // Check if user already has a pending giver activity
-    const existing = await pool.query(
-      'SELECT id FROM help_activities WHERE giver_id = $1 AND status = \\'pending\\' AND receiver_id IS NULL LIMIT 1',
-      [userId]
-    );
+    const existing = await pool.query(`
+      SELECT id FROM help_activities WHERE giver_id = $1 AND status = 'pending' AND receiver_id IS NULL LIMIT 1
+    `, [userId]);
     
     if (existing.rows.length > 0) {
       return res.status(400).json({ success: false, error: 'User already in giver queue' });
@@ -1669,15 +1664,10 @@ app.post('/api/admin/add-to-receiver-queue', authenticateToken, requireAdmin, as
   try {
     const { userId, packageId, amount } = req.body;
     
-    if (!userId || !amount) {
-      return res.status(400).json({ success: false, error: 'User ID and amount required' });
-    }
-    
     // Check if user already has a pending receiver activity
-    const existing = await pool.query(
-      'SELECT id FROM help_activities WHERE receiver_id = $1 AND status = \\'pending\\' AND giver_id IS NULL LIMIT 1',
-      [userId]
-    );
+    const existing = await pool.query(`
+      SELECT id FROM help_activities WHERE receiver_id = $1 AND status = 'pending' AND giver_id IS NULL LIMIT 1
+    `, [userId]);
     
     if (existing.rows.length > 0) {
       return res.status(400).json({ success: false, error: 'User already in receiver queue' });
