@@ -6,6 +6,30 @@ import type {
   MatchedMember
 } from '../types';
 
+// Frontend-side image URL guard to avoid ENOTFOUND when stale data is in localStorage
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const sanitizeImageUrl = (url?: string) => {
+  if (!url) return '';
+  const val = url.trim();
+  if (val.startsWith('http://') || val.startsWith('https://')) return val;
+  if (val.startsWith('/')) return `${API_URL}${val}`;
+  if (val.startsWith('data:')) return val;
+  return '';
+};
+
+const sanitizeUser = (user: User | null): User | null => {
+  if (!user) return null;
+  return {
+    ...user,
+    profilePhoto: sanitizeImageUrl(user.profilePhoto),
+    idDocuments: {
+      ...user.idDocuments,
+      frontImage: sanitizeImageUrl(user.idDocuments?.frontImage),
+      backImage: sanitizeImageUrl(user.idDocuments?.backImage),
+    },
+  };
+};
+
 // Auth Store with localStorage persistence
 interface AuthStore {
   user: User | null;
@@ -19,12 +43,13 @@ interface AuthStore {
 }
 
 export const useAuthStore = create<AuthStore>((set) => ({
-  user: localStorage.getItem('user') ? JSON.parse(localStorage.getItem('user') || 'null') : null,
+  user: sanitizeUser(localStorage.getItem('user') ? JSON.parse(localStorage.getItem('user') || 'null') : null),
   token: localStorage.getItem('token') || null,
   isAuthenticated: !!localStorage.getItem('token'),
   setUser: (user) => {
-    localStorage.setItem('user', JSON.stringify(user));
-    set({ user, isAuthenticated: true });
+    const safeUser = sanitizeUser(user);
+    localStorage.setItem('user', JSON.stringify(safeUser));
+    set({ user: safeUser, isAuthenticated: true });
   },
   setToken: (token) => {
     localStorage.setItem('token', token);
@@ -32,7 +57,7 @@ export const useAuthStore = create<AuthStore>((set) => ({
   },
   updateUser: (updates) =>
     set((state) => {
-      const updated = state.user ? { ...state.user, ...updates } : null;
+      const updated = state.user ? sanitizeUser({ ...state.user, ...updates } as User) : null;
       if (updated) localStorage.setItem('user', JSON.stringify(updated));
       return { user: updated };
     }),
@@ -45,7 +70,7 @@ export const useAuthStore = create<AuthStore>((set) => ({
     const user = localStorage.getItem('user');
     const token = localStorage.getItem('token');
     if (user && token) {
-      set({ user: JSON.parse(user), token, isAuthenticated: true });
+      set({ user: sanitizeUser(JSON.parse(user)), token, isAuthenticated: true });
     }
   },
 }));
