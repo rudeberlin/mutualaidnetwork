@@ -223,10 +223,13 @@ export const UserDashboard: React.FC = () => {
     };
 
     fetchDashboardStats();
-    // Poll stats every 30 seconds to update timer and counts
-    const interval = setInterval(fetchDashboardStats, 30000);
+    // Poll more aggressively (5s) if there are active packages or pending transactions, otherwise 30s
+    const pollInterval = (dashboardStats.activePackagesCount > 0 || offerHelpStatus === 'matched' || offerHelpStatus === 'processing') 
+      ? 5000 
+      : 30000;
+    const interval = setInterval(fetchDashboardStats, pollInterval);
     return () => clearInterval(interval);
-  }, [user?.id, token]);
+  }, [user?.id, token, dashboardStats.activePackagesCount, offerHelpStatus]);
 
   // Monitor activePackagesCount and clear state only after a completed cycle (matched → completed)
   useEffect(() => {

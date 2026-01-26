@@ -606,12 +606,15 @@ app.get('/api/user/:userId/stats', authenticateToken, async (req, res) => {
                   ha.maturity_date,
                   ha.status, ha.id as activity_id,
                   CASE WHEN ha.giver_id = $1 THEN 'giver' ELSE 'receiver' END AS user_role,
-                  EXTRACT(EPOCH FROM (
-                    COALESCE(
-                      ha.maturity_date,
-                      ha.created_at + (COALESCE(p.duration_days,5) || ' days')::interval
-                    ) - CURRENT_TIMESTAMP
-                  )) as time_remaining_seconds
+                  COALESCE(
+                    EXTRACT(EPOCH FROM (
+                      COALESCE(
+                        ha.maturity_date,
+                        ha.created_at + (COALESCE(p.duration_days,5) || ' days')::interval
+                      ) - CURRENT_TIMESTAMP
+                    )),
+                    0
+                  ) as time_remaining_seconds
            FROM help_activities ha
            LEFT JOIN packages p ON ha.package_id = p.id
            WHERE (ha.giver_id = $1 OR ha.receiver_id = $1)
