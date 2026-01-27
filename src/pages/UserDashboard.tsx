@@ -147,6 +147,7 @@ export const UserDashboard: React.FC = () => {
       
       if (response.data.success && response.data.data) {
         const matchData = response.data.data;
+        const matchStatus = matchData.match.status;
         // Transform API response to match our component structure
         const matchedUser = matchData.match.matched_user;
         const hasBankDetails = Boolean(
@@ -157,7 +158,7 @@ export const UserDashboard: React.FC = () => {
           id: matchData.match.id,
           amount: matchData.match.amount,
           payment_deadline: matchData.match.payment_deadline,
-          status: matchData.match.status,
+          status: matchStatus,
           role: matchData.role,
           matched_user_name: matchedUser.full_name,
           matched_user_phone: matchedUser.phone_number,
@@ -181,10 +182,15 @@ export const UserDashboard: React.FC = () => {
             description: matchData.match.package.name,
           });
         }
-        // Update status to matched only if payment is not completed (to avoid resetting cleared status)
-        if (matchData.role === 'giver' && matchData.match.status !== 'completed') {
+        // Clear local help status once match is beyond pending/matched
+        if (!['pending', 'matched'].includes(matchStatus)) {
+          setOfferHelpStatus(null);
+          setReceiveHelpStatus(null);
+          localStorage.removeItem('offerHelpStatus');
+          localStorage.removeItem('receiveHelpStatus');
+        } else if (matchData.role === 'giver') {
           setOfferHelpStatus('matched');
-        } else if (matchData.role === 'receiver' && matchData.match.status !== 'completed') {
+        } else if (matchData.role === 'receiver') {
           setReceiveHelpStatus('matched');
         }
       } else {
@@ -698,7 +704,10 @@ export const UserDashboard: React.FC = () => {
         {/* Active Help Requests - Persistent Status Display */}
         <div className="grid md:grid-cols-2 gap-6 mb-12">
           {/* Offer Help Status - Only show when pending or matched (hide after user confirms payment) */}
-          {(offerHelpStatus || (paymentMatch && paymentMatch.role === 'giver' && ['pending', 'matched'].includes(paymentMatch.status))) && (
+          {(
+            (offerHelpStatus && (!paymentMatch || ['pending', 'matched'].includes(paymentMatch.status))) ||
+            (paymentMatch && paymentMatch.role === 'giver' && ['pending', 'matched'].includes(paymentMatch.status))
+          ) && (
             <div className="bg-gradient-to-br from-slate-800/40 to-slate-900/40 border border-slate-700/50 rounded-lg p-6 backdrop-blur-sm">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-bold text-white">Offering Help</h3>
@@ -859,7 +868,10 @@ export const UserDashboard: React.FC = () => {
           )}
 
           {/* Receive Help Status - Only show when pending or matched */}
-          {(receiveHelpStatus || (paymentMatch && paymentMatch.role === 'receiver' && ['pending', 'matched'].includes(paymentMatch.status))) && (
+          {(
+            (receiveHelpStatus && (!paymentMatch || ['pending', 'matched'].includes(paymentMatch.status))) ||
+            (paymentMatch && paymentMatch.role === 'receiver' && ['pending', 'matched'].includes(paymentMatch.status))
+          ) && (
             <div className="bg-gradient-to-br from-slate-800/40 to-slate-900/40 border border-slate-700/50 rounded-lg p-6 backdrop-blur-sm">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-bold text-white">Requesting Help</h3>
