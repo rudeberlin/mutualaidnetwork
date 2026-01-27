@@ -1,5 +1,6 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { SpeedInsights } from '@vercel/speed-insights/react';
 import { LoginPage } from './pages/LoginPage';
 import { RegisterPageNew } from './pages/RegisterPageNew';
 import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
@@ -106,6 +107,7 @@ function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Router>
+      <SpeedInsights />
     </>
   );
 }
