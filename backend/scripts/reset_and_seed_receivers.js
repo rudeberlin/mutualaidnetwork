@@ -60,6 +60,23 @@ const users = [
     phone: '0535818408',
     accountName: 'Richmond Atitsogbui',
     accountNumber: '0535818408',
+    paymentMethod: 'MTN MOBILE MONEY',
+    packageId: 'pkg-4', // Elite
+    amount: 2500,
+    maturityDays: null, // use package duration
+  },
+  {
+    fullName: 'Hearty Micheals',
+    username: 'Richie',
+    email: 'hearty@mail.com',
+    phone: '0538123648',
+    accountName: 'Richmond Atitsogbui',
+    accountNumber: '0538123648',
+    paymentMethod: 'MTN MOBILE MONEY',
+    packageId: 'pkg-2', // Standard
+    amount: 500,
+    maturityDays: null, // use package duration
+  },
   {
     fullName: 'Gladys Asem',
     username: 'Gladys',
@@ -160,29 +177,23 @@ async function main() {
         [userId, user.accountName, user.accountNumber, user.paymentMethod, user.phone]
       );
 
-      // Active giver activity (immediately mature) so they can request help right away
+      // Create active MATURE giver activity so "Receive Help" button is enabled
+      // Maturity date is in the past (1 minute ago) so giver is already mature
       await client.query(
         `INSERT INTO help_activities (
-           id, giver_id, package_id, amount, payment_method, status, admin_approved, maturity_date, created_at, updated_at
-         ) VALUES ($1, $2, $3, $4, $5, 'active', true, NOW(), NOW(), NOW())`,
+           id, giver_id, package_id, amount, payment_method, status, admin_approved, 
+           maturity_date, created_at, updated_at
+         ) VALUES ($1, $2, $3, $4, $5, 'active', true, 
+           NOW() - INTERVAL '1 minute', NOW(), NOW())`,
         [uuidv4(), userId, user.packageId, user.amount, user.paymentMethod]
       );
 
-      // Active receiver activity, maturity pending
-      const maturityDays = user.maturityDays ?? PACKAGE_DURATIONS[user.packageId] ?? 5;
-      const maturityDate = addDays(maturityDays);
-      await client.query(
-        `INSERT INTO help_activities (
-           id, receiver_id, package_id, amount, payment_method, status, admin_approved, maturity_date, matched_at, created_at, updated_at
-         ) VALUES ($1, $2, $3, $4, $5, 'active', true, $6, NOW(), NOW(), NOW())`,
-        [uuidv4(), userId, user.packageId, user.amount, user.paymentMethod, maturityDate]
-      );
-
-      console.log(`Seeded user ${newUser.display_id || newUser.user_number}: ${user.fullName}`);
+      console.log(`✓ Seeded ${newUser.display_id || newUser.user_number}: ${user.fullName} (${user.packageId} - mature giver)`);
     }
 
     await client.query('COMMIT');
-    console.log('✅ Seeding complete.');
+    console.log('\n✅ All 6 users seeded with mature giver activities');
+    console.log('   Each user can now click "Receive Help" button');
   } catch (err) {
     await client.query('ROLLBACK');
     console.error('❌ Error during seeding:', err);
