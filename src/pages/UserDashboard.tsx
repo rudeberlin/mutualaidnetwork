@@ -697,8 +697,8 @@ export const UserDashboard: React.FC = () => {
 
         {/* Active Help Requests - Persistent Status Display */}
         <div className="grid md:grid-cols-2 gap-6 mb-12">
-          {/* Offer Help Status */}
-          {(offerHelpStatus || (paymentMatch && paymentMatch.role === 'giver' && paymentMatch.status !== 'completed')) && (
+          {/* Offer Help Status - Only show when pending or matched (hide after user confirms payment) */}
+          {(offerHelpStatus || (paymentMatch && paymentMatch.role === 'giver' && ['pending', 'matched'].includes(paymentMatch.status))) && (
             <div className="bg-gradient-to-br from-slate-800/40 to-slate-900/40 border border-slate-700/50 rounded-lg p-6 backdrop-blur-sm">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-bold text-white">Offering Help</h3>
@@ -858,8 +858,8 @@ export const UserDashboard: React.FC = () => {
             </div>
           )}
 
-          {/* Receive Help Status */}
-          {(receiveHelpStatus || (paymentMatch && paymentMatch.role === 'receiver' && paymentMatch.status !== 'completed')) && (
+          {/* Receive Help Status - Only show when pending or matched */}
+          {(receiveHelpStatus || (paymentMatch && paymentMatch.role === 'receiver' && ['pending', 'matched'].includes(paymentMatch.status))) && (
             <div className="bg-gradient-to-br from-slate-800/40 to-slate-900/40 border border-slate-700/50 rounded-lg p-6 backdrop-blur-sm">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-bold text-white">Requesting Help</h3>
@@ -1129,14 +1129,16 @@ export const UserDashboard: React.FC = () => {
                     const elapsedTime = currentTime - startTime;
                     const progressPercentage = Math.min((elapsedTime / packageDurationMs) * 100, 100);
                     
-                    // Calculate full return at maturity
-                    const fullReturnAmount = (pkg.amount * pkg.return_percentage) / 100;
-                    const totalAtMaturity = pkg.amount + fullReturnAmount;
+                    // Calculate full return at maturity - Convert to numbers to prevent NaN
+                    const pkgAmount = Number(pkg.amount || 0);
+                    const pkgReturnPercentage = Number(pkg.return_percentage || 0);
+                    const fullReturnAmount = (pkgAmount * pkgReturnPercentage) / 100;
+                    const totalAtMaturity = pkgAmount + fullReturnAmount;
                     
                     // Calculate accrued return (linear growth to return_percentage over duration)
-                    const accruedReturnPercent = (progressPercentage / 100) * pkg.return_percentage;
-                    const accruedAmount = (pkg.amount * accruedReturnPercent) / 100;
-                    const currentValue = pkg.amount + accruedAmount;
+                    const accruedReturnPercent = (progressPercentage / 100) * pkgReturnPercentage;
+                    const accruedAmount = (pkgAmount * accruedReturnPercent) / 100;
+                    const currentValue = pkgAmount + accruedAmount;
                     
                     // Calculate maturity countdown
                     // Use backend-provided timer if present; otherwise derive from subscribed_at + duration_days
@@ -1155,11 +1157,11 @@ export const UserDashboard: React.FC = () => {
                         <div className="flex items-center justify-between mb-2">
                           <div className="min-w-0 flex-1">
                             <p className="text-white font-semibold text-sm">{pkg.package_name}</p>
-                            <p className="text-slate-400 text-xs">Principal: ₵{Number(pkg.amount || 0).toLocaleString()}</p>
+                            <p className="text-slate-400 text-xs">Principal: ₵{pkgAmount.toLocaleString()}</p>
                           </div>
                           <div className="text-right ml-2">
-                            <p className="text-emerald-400 font-bold text-sm">₵{Number(currentValue || 0).toFixed(2)}</p>
-                            <p className="text-slate-400 text-xs">{progressPercentage >= 100 ? 'Matured' : `${Number(progressPercentage || 0).toFixed(1)}% complete`}</p>
+                            <p className="text-emerald-400 font-bold text-sm">₵{currentValue.toFixed(2)}</p>
+                            <p className="text-slate-400 text-xs">{progressPercentage >= 100 ? 'Matured' : `${progressPercentage.toFixed(1)}% complete`}</p>
                           </div>
                         </div>
                         {/* Progress bar */}
@@ -1172,11 +1174,11 @@ export const UserDashboard: React.FC = () => {
                         {/* Return Info */}
                         <div className="flex items-center justify-between text-xs mb-2">
                           <span className="text-slate-400">Interest Earned:</span>
-                          <span className="text-emerald-400 font-semibold">+₵{Number(accruedAmount || 0).toFixed(2)}</span>
+                          <span className="text-emerald-400 font-semibold">+₵{accruedAmount.toFixed(2)}</span>
                         </div>
                         <div className="flex items-center justify-between text-xs mb-2">
                           <span className="text-slate-400">Total at Maturity:</span>
-                          <span className="text-teal-400 font-bold">₵{Number(totalAtMaturity || 0).toFixed(2)}</span>
+                          <span className="text-teal-400 font-bold">₵{totalAtMaturity.toFixed(2)}</span>
                         </div>
                         {/* Maturity Timer */}
                         {pkg.status === 'active' && timeRemainingSeconds > 0 ? (
