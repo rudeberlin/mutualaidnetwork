@@ -625,7 +625,7 @@ export const UserDashboard: React.FC = () => {
               <TrendingUp className="text-emerald-500" size={20} />
             </div>
             <p className="text-3xl font-bold text-white">
-              ${loadingStats ? '...' : dashboardStats.totalEarnings.toFixed(2)}
+              ${loadingStats ? '...' : Number(dashboardStats.totalEarnings || 0).toFixed(2)}
             </p>
             <p className="text-emerald-400 text-sm mt-2">+12% this month</p>
           </div>
@@ -1155,8 +1155,8 @@ export const UserDashboard: React.FC = () => {
                             <p className="text-slate-400 text-xs">Principal: ₵{pkg.amount.toLocaleString()}</p>
                           </div>
                           <div className="text-right ml-2">
-                            <p className="text-emerald-400 font-bold text-sm">₵{currentValue.toFixed(2)}</p>
-                            <p className="text-slate-400 text-xs">{progressPercentage >= 100 ? 'Matured' : `${progressPercentage.toFixed(1)}% complete`}</p>
+                            <p className="text-emerald-400 font-bold text-sm">₵{Number(currentValue || 0).toFixed(2)}</p>
+                            <p className="text-slate-400 text-xs">{progressPercentage >= 100 ? 'Matured' : `${Number(progressPercentage || 0).toFixed(1)}% complete`}</p>
                           </div>
                         </div>
                         {/* Progress bar */}
@@ -1169,11 +1169,11 @@ export const UserDashboard: React.FC = () => {
                         {/* Return Info */}
                         <div className="flex items-center justify-between text-xs mb-2">
                           <span className="text-slate-400">Interest Earned:</span>
-                          <span className="text-emerald-400 font-semibold">+₵{accruedAmount.toFixed(2)}</span>
+                          <span className="text-emerald-400 font-semibold">+₵{Number(accruedAmount || 0).toFixed(2)}</span>
                         </div>
                         <div className="flex items-center justify-between text-xs mb-2">
                           <span className="text-slate-400">Total at Maturity:</span>
-                          <span className="text-teal-400 font-bold">₵{totalAtMaturity.toFixed(2)}</span>
+                          <span className="text-teal-400 font-bold">₵{Number(totalAtMaturity || 0).toFixed(2)}</span>
                         </div>
                         {/* Maturity Timer */}
                         {pkg.status === 'active' && timeRemainingSeconds > 0 ? (
