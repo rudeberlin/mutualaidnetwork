@@ -443,7 +443,7 @@ app.post('/api/login', async (req, res) => {
 // GET user by ID
 app.get('/api/user/:id', authenticateToken, async (req, res) => {
   try {
-    const result = await pool.query('SELECT id, full_name, username, email, phone_number, country, my_referral_code, profile_photo, role, is_verified, payment_method_verified, total_earnings, created_at FROM users WHERE id = $1', [req.params.id]);
+    const result = await pool.query('SELECT id, full_name, username, email, phone_number, country, my_referral_code, profile_photo, role, is_verified, payment_method_verified, total_earnings, registered_package_id, created_at FROM users WHERE id = $1', [req.params.id]);
 
     if (result.rows.length === 0) {
       return res.status(404).json({ success: false, error: 'User not found' });
@@ -785,6 +785,12 @@ app.post('/api/help/register-offer', authenticateToken, async (req, res) => {
       return res.status(400).json({ success: false, error: 'You already have an active help offer' });
     }
 
+    // Save registered package if this is user's first offer
+    const userResult = await pool.query('SELECT registered_package_id FROM users WHERE id = $1', [userId]);
+    if (userResult.rows.length > 0 && !userResult.rows[0].registered_package_id) {
+      await pool.query('UPDATE users SET registered_package_id = $1 WHERE id = $2', [packageId, userId]);
+    }
+
     // Create help activity as giver
     const activityId = uuidv4();
     const result = await pool.query(`
@@ -822,6 +828,17 @@ app.post('/api/help/register-receive', authenticateToken, async (req, res) => {
 
     if (offerCheck.rows.length === 0) {
       return res.status(400).json({ success: false, error: 'You must offer help first before requesting help' });
+    }
+
+    // Check user's registered package - they can only receive for their registered package
+    const userResult = await pool.query('SELECT registered_package_id FROM users WHERE id = $1', [userId]);
+    const registeredPackageId = userResult.rows[0]?.registered_package_id;
+    
+    if (registeredPackageId && packageId !== registeredPackageId) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'You can only receive help for your registered package. You may offer help with any package.' 
+      });
     }
 
     // Check package exists

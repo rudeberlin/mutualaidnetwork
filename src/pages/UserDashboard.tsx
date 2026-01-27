@@ -54,8 +54,10 @@ export const UserDashboard: React.FC = () => {
   const [showSettings, setShowSettings] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showPackageSelection, setShowPackageSelection] = useState(false);
+  const [packageSelectionMode, setPackageSelectionMode] = useState<'offer' | 'receive'>('offer');
   const [showCurrentPackageModal, setShowCurrentPackageModal] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const [registeredPackageId, setRegisteredPackageId] = useState<string | null>(null);
   const [selectedOfferPackage, setSelectedOfferPackage] = useState<Package | null>(() => {
     const saved = localStorage.getItem('selectedOfferPackage');
     return saved ? JSON.parse(saved) : null;
@@ -237,6 +239,27 @@ export const UserDashboard: React.FC = () => {
     return () => clearInterval(interval);
   }, [user?.id, token]);
 
+  // Fetch user's registered package
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      if (!user?.id || !token) return;
+      
+      try {
+        const response = await axios.get(`${API_URL}/api/user/${user.id}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        
+        if (response.data.success && response.data.data.registered_package_id) {
+          setRegisteredPackageId(response.data.data.registered_package_id);
+        }
+      } catch (error) {
+        console.error('Failed to fetch user profile:', error);
+      }
+    };
+
+    fetchUserProfile();
+  }, [user?.id, token]);
+
   // Fetch giver maturity status (determines if "Receive Help" button should be enabled)
   useEffect(() => {
     const fetchGiverMaturity = async () => {
@@ -317,6 +340,12 @@ export const UserDashboard: React.FC = () => {
   };
 
   const handleOfferHelp = () => {
+    setPackageSelectionMode('offer');
+    setShowPackageSelection(true);
+  };
+
+  const handleReceiveHelp = () => {
+    setPackageSelectionMode('receive');
     setShowPackageSelection(true);
   };
 
@@ -419,7 +448,14 @@ export const UserDashboard: React.FC = () => {
           <div className="bg-gradient-to-br from-slate-800/95 to-slate-900/95 border border-slate-700/50 rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
             {/* Header */}
             <div className="sticky top-0 flex items-center justify-between p-6 border-b border-slate-700/30 bg-slate-900/80 backdrop-blur">
-              <h2 className="text-2xl font-bold text-white">Select a Package</h2>
+              <div>
+                <h2 className="text-2xl font-bold text-white">
+                  {packageSelectionMode === 'offer' ? 'Select Any Package to Offer' : 'Select Your Registered Package'}
+                </h2>
+                {packageSelectionMode === 'receive' && (
+                  <p className="text-sm text-slate-400 mt-1">You can only receive help for your registered package</p>
+                )}
+              </div>
               <button
                 onClick={() => setShowPackageSelection(false)}
                 className="p-2 hover:bg-slate-700/50 rounded-lg transition-all"
@@ -430,7 +466,9 @@ export const UserDashboard: React.FC = () => {
 
             {/* Packages Grid */}
             <div className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {PACKAGES.map((pkg) => (
+              {PACKAGES.filter(pkg => 
+                packageSelectionMode === 'offer' || !registeredPackageId || pkg.id === registeredPackageId
+              ).map((pkg) => (
                 <div
                   key={pkg.id}
                   className="bg-gradient-to-br from-slate-800/40 to-slate-900/40 border border-slate-700/50 rounded-xl p-6 hover:border-emerald-500/50 transition-all hover:shadow-lg hover:shadow-emerald-500/10 cursor-pointer"
@@ -464,7 +502,7 @@ export const UserDashboard: React.FC = () => {
 
                   {/* Select Button */}
                   <button
-                    onClick={() => handlePackageSelect(pkg, 'offer')}
+                    onClick={() => handlePackageSelect(pkg, packageSelectionMode)}
                     className="w-full px-4 py-3 bg-emerald-500 text-white font-semibold rounded-lg hover:bg-emerald-600 transition-all flex items-center justify-center gap-2"
                   >
                     <Check size={18} />

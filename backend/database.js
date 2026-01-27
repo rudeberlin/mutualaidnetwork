@@ -48,6 +48,7 @@ export async function initializeDatabase() {
         is_verified BOOLEAN DEFAULT FALSE,
         payment_method_verified BOOLEAN DEFAULT FALSE,
         total_earnings DECIMAL(10, 2) DEFAULT 0,
+        registered_package_id VARCHAR(255),
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
@@ -87,6 +88,12 @@ export async function initializeDatabase() {
     await client.query(`
       ALTER TABLE packages
         ADD COLUMN IF NOT EXISTS active BOOLEAN DEFAULT TRUE
+    `);
+
+    // Add registered_package_id to users table if not exists
+    await client.query(`
+      ALTER TABLE users
+        ADD COLUMN IF NOT EXISTS registered_package_id VARCHAR(255)
     `);
 
     // Create payment_methods table

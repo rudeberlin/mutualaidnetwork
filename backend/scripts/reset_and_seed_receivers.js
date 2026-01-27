@@ -128,12 +128,12 @@ async function main() {
           id, full_name, username, email, phone_number, country,
           referral_code, my_referral_code, password_hash, profile_photo,
           role, id_verified, is_verified, payment_method_verified, total_earnings,
-          display_id
+          display_id, registered_package_id
         ) VALUES (
           $1, $2, $3, $4, $5, 'Ghana',
           $6, $7, $8, $9,
           'member', true, true, true, 0,
-          $10
+          $10, $11
         )
         RETURNING id, user_number, display_id`,
         [
@@ -147,6 +147,7 @@ async function main() {
           passwordHash,
           `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(user.username)}`,
           displayId,
+          user.packageId, // Set registered_package_id
         ]
       );
 
