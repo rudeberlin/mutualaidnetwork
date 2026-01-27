@@ -2256,16 +2256,8 @@ app.post('/api/user/complete-receive-cycle', authenticateToken, async (req, res)
         `, [giverActivityResult.rows[0].id]);
       }
       
-      // Create a NEW immediately-mature giver activity so they can request help right away
-      await pool.query(`
-        INSERT INTO help_activities (
-          id, giver_id, package_id, amount, status, admin_approved, 
-          maturity_date, created_at, updated_at
-        ) VALUES (
-          $1, $2, $3, $4, 'active', true,
-          CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
-        )
-      `, [require('uuid').v4(), receiverActivity.giver_id, receiverActivity.package_id || 'pkg-1', 250]);
+      // Don't auto-create giver activity
+      // User will click "Offer Help" button to start offering in the next cycle
     }
     
     res.json({ 

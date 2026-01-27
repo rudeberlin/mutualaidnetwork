@@ -60,23 +60,6 @@ const users = [
     phone: '0535818408',
     accountName: 'Richmond Atitsogbui',
     accountNumber: '0535818408',
-    paymentMethod: 'MTN MOBILE MONEY',
-    packageId: 'pkg-4', // Elite
-    amount: 2500,
-    maturityDays: null, // use package duration
-  },
-  {
-    fullName: 'Hearty Micheals',
-    username: 'Richie',
-    email: 'hearty@mail.com',
-    phone: '0538123648',
-    accountName: 'Richmond Atitsogbui',
-    accountNumber: '0538123648',
-    paymentMethod: 'MTN MOBILE MONEY',
-    packageId: 'pkg-2', // Standard
-    amount: 500,
-    maturityDays: null, // use package duration
-  },
   {
     fullName: 'Gladys Asem',
     username: 'Gladys',
