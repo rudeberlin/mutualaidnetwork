@@ -2008,7 +2008,7 @@ app.get('/api/user/:userId/payment-match', authenticateToken, async (req, res) =
              JOIN help_activities ha ON ha.id = pm.help_activity_id
              JOIN packages p ON p.id = ha.package_id
        LEFT JOIN user_payment_accounts recv ON recv.user_id = r.id AND recv.mode = 'receive'
-       WHERE pm.giver_id = $1 AND pm.status IN ('pending', 'awaiting_confirmation')
+       WHERE pm.giver_id = $1 AND pm.status IN ('pending', 'awaiting_confirmation', 'confirmed')
        ORDER BY pm.created_at DESC
        LIMIT 1`,
       [req.params.userId]
@@ -2038,7 +2038,7 @@ app.get('/api/user/:userId/payment-match', authenticateToken, async (req, res) =
              JOIN help_activities ha ON ha.id = pm.help_activity_id
              JOIN packages p ON p.id = ha.package_id
        LEFT JOIN user_payment_accounts give ON give.user_id = g.id AND give.mode = 'give'
-       WHERE pm.receiver_id = $1 AND pm.status IN ('pending', 'awaiting_confirmation')
+       WHERE pm.receiver_id = $1 AND pm.status IN ('pending', 'awaiting_confirmation', 'confirmed')
        ORDER BY pm.created_at DESC
        LIMIT 1`,
       [req.params.userId]

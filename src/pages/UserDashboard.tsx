@@ -687,7 +687,7 @@ export const UserDashboard: React.FC = () => {
         {/* Active Help Requests - Persistent Status Display */}
         <div className="grid md:grid-cols-2 gap-6 mb-12">
           {/* Offer Help Status */}
-          {(offerHelpStatus || paymentMatch) && (selectedOfferPackage || paymentMatch) && (
+          {(offerHelpStatus || (paymentMatch && paymentMatch.role === 'giver')) && (selectedOfferPackage || (paymentMatch && paymentMatch.role === 'giver')) && (
             <div className="bg-gradient-to-br from-slate-800/40 to-slate-900/40 border border-slate-700/50 rounded-lg p-6 backdrop-blur-sm">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-bold text-white">Offering Help</h3>
@@ -764,7 +764,7 @@ export const UserDashboard: React.FC = () => {
                   </div>
                 </div>
               )}
-              {offerHelpStatus === 'matched' && paymentMatch && (
+              {offerHelpStatus === 'matched' && paymentMatch && paymentMatch.role === 'giver' && (
                 <div>
                   <div className="flex items-center gap-2 mb-3">
                     <div className="w-3 h-3 bg-emerald-500 rounded-full"></div>
@@ -845,7 +845,7 @@ export const UserDashboard: React.FC = () => {
           )}
 
           {/* Receive Help Status */}
-          {(receiveHelpStatus || paymentMatch) && (selectedReceivePackage || paymentMatch) && (
+          {(receiveHelpStatus || (paymentMatch && paymentMatch.role === 'receiver')) && (selectedReceivePackage || (paymentMatch && paymentMatch.role === 'receiver')) && (
             <div className="bg-gradient-to-br from-slate-800/40 to-slate-900/40 border border-slate-700/50 rounded-lg p-6 backdrop-blur-sm">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-bold text-white">Requesting Help</h3>
@@ -906,7 +906,7 @@ export const UserDashboard: React.FC = () => {
                   </div>
                 </div>
               )}
-              {receiveHelpStatus === 'matched' && paymentMatch && (
+              {receiveHelpStatus === 'matched' && paymentMatch && paymentMatch.role === 'receiver' && (
                 <div>
                   <div className="flex items-center gap-2 mb-3">
                     <div className="w-3 h-3 bg-emerald-500 rounded-full"></div>
