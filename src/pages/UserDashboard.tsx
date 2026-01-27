@@ -344,11 +344,6 @@ export const UserDashboard: React.FC = () => {
     setShowPackageSelection(true);
   };
 
-  const handleReceiveHelp = () => {
-    setPackageSelectionMode('receive');
-    setShowPackageSelection(true);
-  };
-
   const handlePackageSelect = async (pkg: Package, type: 'offer' | 'receive') => {
     try {
       if (type === 'offer') {
@@ -406,6 +401,7 @@ export const UserDashboard: React.FC = () => {
       alert('You must offer help first');
       return;
     }
+    setPackageSelectionMode('receive');
     setShowPackageSelection(true);
   };
 
