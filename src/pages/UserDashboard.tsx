@@ -390,8 +390,8 @@ export const UserDashboard: React.FC = () => {
 
 
 
-  // Show loading state only during initial data fetch
-  if (loadingStats && !hasFetchedMatch) {
+  // Show loading state until BOTH stats and match data are loaded
+  if (loadingStats || !hasFetchedMatch) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-emerald-950 flex items-center justify-center">
         <div className="text-center">
