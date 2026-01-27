@@ -396,6 +396,15 @@ export const UserDashboard: React.FC = () => {
 
 
 
+  // Debug logging
+  console.log('Dashboard render check:', {
+    loadingStats,
+    hasFetchedMatch,
+    user: user?.id,
+    token: !!token,
+    shouldShowLoading: loadingStats || !hasFetchedMatch
+  });
+
   // Show loading state until BOTH stats and match data are loaded
   if (loadingStats || !hasFetchedMatch) {
     return (
@@ -403,6 +412,9 @@ export const UserDashboard: React.FC = () => {
         <div className="text-center">
           <div className="w-16 h-16 border-4 border-emerald-500/30 border-t-emerald-500 rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-slate-400 text-lg">Loading dashboard...</p>
+          <p className="text-slate-500 text-xs mt-2">
+            Stats: {loadingStats ? 'loading...' : 'ready'} | Match: {hasFetchedMatch ? 'fetched' : 'pending'}
+          </p>
         </div>
       </div>
     );
