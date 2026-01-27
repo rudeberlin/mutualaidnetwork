@@ -135,7 +135,10 @@ export const UserDashboard: React.FC = () => {
 
   // Fetch payment match data callback
   const fetchPaymentMatchData = useCallback(async () => {
-    if (!user?.id || !token) return;
+    if (!user?.id || !token) {
+      setHasFetchedMatch(true);
+      return;
+    }
     
     try {
       const response = await axios.get(`${API_URL}/api/user/${user.id}/payment-match`, {
@@ -216,7 +219,10 @@ export const UserDashboard: React.FC = () => {
   // Fetch dashboard stats
   useEffect(() => {
     const fetchDashboardStats = async () => {
-      if (!user?.id || !token) return;
+      if (!user?.id || !token) {
+        setLoadingStats(false);
+        return;
+      }
       
       try {
         const response = await axios.get(`${API_URL}/api/user/${user.id}/stats`, {
