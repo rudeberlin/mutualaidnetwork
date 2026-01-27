@@ -401,13 +401,7 @@ export const UserDashboard: React.FC = () => {
     }
   };
 
-  const handleReceiveHelp = () => {
-    if (!offerHelpStatus) {
-      alert('You must offer help first');
-      return;
-    }
-    setShowPackageSelection(true);
-  };
+
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-emerald-950">
@@ -687,7 +681,7 @@ export const UserDashboard: React.FC = () => {
         {/* Active Help Requests - Persistent Status Display */}
         <div className="grid md:grid-cols-2 gap-6 mb-12">
           {/* Offer Help Status */}
-          {(offerHelpStatus || (paymentMatch && paymentMatch.role === 'giver')) && (selectedOfferPackage || (paymentMatch && paymentMatch.role === 'giver')) && (
+          {(!paymentMatch || paymentMatch.role === 'giver') && (offerHelpStatus || (paymentMatch && paymentMatch.role === 'giver')) && (selectedOfferPackage || (paymentMatch && paymentMatch.role === 'giver')) && (
             <div className="bg-gradient-to-br from-slate-800/40 to-slate-900/40 border border-slate-700/50 rounded-lg p-6 backdrop-blur-sm">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-bold text-white">Offering Help</h3>
@@ -845,7 +839,7 @@ export const UserDashboard: React.FC = () => {
           )}
 
           {/* Receive Help Status */}
-          {(receiveHelpStatus || (paymentMatch && paymentMatch.role === 'receiver')) && (selectedReceivePackage || (paymentMatch && paymentMatch.role === 'receiver')) && (
+          {(!paymentMatch || paymentMatch.role === 'receiver') && (receiveHelpStatus || (paymentMatch && paymentMatch.role === 'receiver')) && (selectedReceivePackage || (paymentMatch && paymentMatch.role === 'receiver')) && (
             <div className="bg-gradient-to-br from-slate-800/40 to-slate-900/40 border border-slate-700/50 rounded-lg p-6 backdrop-blur-sm">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-bold text-white">Requesting Help</h3>
