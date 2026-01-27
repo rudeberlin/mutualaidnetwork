@@ -1115,9 +1115,14 @@ export const UserDashboard: React.FC = () => {
                     const elapsedTime = currentTime - startTime;
                     const progressPercentage = Math.min((elapsedTime / packageDurationMs) * 100, 100);
                     
+                    // Calculate full return at maturity
+                    const fullReturnAmount = (pkg.amount * pkg.return_percentage) / 100;
+                    const totalAtMaturity = pkg.amount + fullReturnAmount;
+                    
                     // Calculate accrued return (linear growth to return_percentage over duration)
                     const accruedReturnPercent = (progressPercentage / 100) * pkg.return_percentage;
                     const accruedAmount = (pkg.amount * accruedReturnPercent) / 100;
+                    const currentValue = pkg.amount + accruedAmount;
                     
                     // Calculate maturity countdown
                     // Use backend-provided timer if present; otherwise derive from subscribed_at + duration_days
@@ -1136,19 +1141,28 @@ export const UserDashboard: React.FC = () => {
                         <div className="flex items-center justify-between mb-2">
                           <div className="min-w-0 flex-1">
                             <p className="text-white font-semibold text-sm">{pkg.package_name}</p>
-                            <p className="text-slate-400 text-xs">₵{pkg.amount.toLocaleString()}</p>
+                            <p className="text-slate-400 text-xs">Principal: ₵{pkg.amount.toLocaleString()}</p>
                           </div>
                           <div className="text-right ml-2">
-                            <p className="text-emerald-400 font-bold text-xs">+₵{accruedAmount.toFixed(2)}</p>
-                            <p className="text-slate-400 text-xs">{progressPercentage.toFixed(1)}% complete</p>
+                            <p className="text-emerald-400 font-bold text-sm">₵{currentValue.toFixed(2)}</p>
+                            <p className="text-slate-400 text-xs">{progressPercentage >= 100 ? 'Matured' : `${progressPercentage.toFixed(1)}% complete`}</p>
                           </div>
                         </div>
                         {/* Progress bar */}
-                        <div className="w-full h-1.5 bg-slate-700/50 rounded-full overflow-hidden">
+                        <div className="w-full h-1.5 bg-slate-700/50 rounded-full overflow-hidden mb-2">
                           <div 
                             className="h-full bg-gradient-to-r from-emerald-500 to-teal-500 transition-all"
                             style={{ width: `${progressPercentage}%` }}
                           ></div>
+                        </div>
+                        {/* Return Info */}
+                        <div className="flex items-center justify-between text-xs mb-2">
+                          <span className="text-slate-400">Interest Earned:</span>
+                          <span className="text-emerald-400 font-semibold">+₵{accruedAmount.toFixed(2)}</span>
+                        </div>
+                        <div className="flex items-center justify-between text-xs mb-2">
+                          <span className="text-slate-400">Total at Maturity:</span>
+                          <span className="text-teal-400 font-bold">₵{totalAtMaturity.toFixed(2)}</span>
                         </div>
                         {/* Maturity Timer */}
                         {pkg.status === 'active' && timeRemainingSeconds > 0 ? (
