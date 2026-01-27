@@ -181,10 +181,10 @@ export const UserDashboard: React.FC = () => {
             description: matchData.match.package.name,
           });
         }
-        // Update status to matched whenever backend reports a match (covers admin/manual matches)
-        if (matchData.role === 'giver') {
+        // Update status to matched only if payment is not completed (to avoid resetting cleared status)
+        if (matchData.role === 'giver' && matchData.match.status !== 'completed') {
           setOfferHelpStatus('matched');
-        } else if (matchData.role === 'receiver') {
+        } else if (matchData.role === 'receiver' && matchData.match.status !== 'completed') {
           setReceiveHelpStatus('matched');
         }
       } else {
