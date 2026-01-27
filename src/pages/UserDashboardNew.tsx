@@ -88,7 +88,7 @@ export const UserDashboardNew: React.FC = () => {
       userId: user.id,
       type: 'HELP_GIVEN',
       amount: selectedPackage.amount,
-      currency: 'USD',
+      currency: 'GHS',
       status: 'COMPLETED',
       description: `Gave help for ${selectedPackage.name} package`,
       relatedMemberId: MOCK_MATCHED_MEMBER.id,
@@ -104,7 +104,7 @@ export const UserDashboardNew: React.FC = () => {
     });
 
     setSelectedPackage(null);
-    alert(`Help given successfully! You earned $${(selectedPackage.amount * selectedPackage.returnPercentage / 100).toFixed(2)}`);
+    alert(`Help given successfully! You earned GHS ${(selectedPackage.amount * selectedPackage.returnPercentage / 100).toFixed(2)}`);
   };
 
   const paymentMethods = [
@@ -167,8 +167,8 @@ export const UserDashboardNew: React.FC = () => {
               <h3 className="text-gray-600 font-medium">Total Earnings</h3>
               <TrendingUp className="w-5 h-5 text-green-600" />
             </div>
-            <p className="text-3xl font-bold text-gray-900">${user.totalEarnings.toFixed(2)}</p>
-            <p className="text-sm text-gray-500 mt-2">USD</p>
+            <p className="text-3xl font-bold text-gray-900">GHS {user.totalEarnings.toFixed(2)}</p>
+            <p className="text-sm text-gray-500 mt-2">Ghana Cedis</p>
           </div>
 
           {/* Verification Status */}
@@ -216,7 +216,7 @@ export const UserDashboardNew: React.FC = () => {
             </p>
             <p className="text-sm text-gray-500 mt-2">
               {selectedPackage
-                ? `${selectedPackage.amount} USD`
+                ? `GHS ${selectedPackage.amount}`
                 : 'Select a package'}
             </p>
           </div>

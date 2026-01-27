@@ -51,8 +51,14 @@ async function main() {
     console.log(`✓ Deleted ${deleteResult.rows.length} users`);
 
     // Reset user_number sequence
-    await client.query("SELECT setval('users_user_number_seq', 1, false);");
-    console.log('✓ Reset user_number sequence');
+    await client.query(`
+      SELECT setval(
+        'users_user_number_seq',
+        COALESCE((SELECT MAX(user_number) FROM users), 0) + 1,
+        false
+      );
+    `);
+    console.log('✓ Reset user_number sequence (aligned to max existing user_number)');
 
     await client.query('COMMIT');
     console.log('\n✅ Database cleaned! Ready for fresh user registrations.');

@@ -82,9 +82,9 @@ export const PackageCardComponent: React.FC<PackageCardProps> = ({
 
         {/* Amount */}
         <div className="mb-8">
-          <div className="text-5xl font-bold">${pkg.amount}</div>
+          <div className="text-5xl font-bold">GHS {pkg.amount}</div>
           <span className={`text-sm ${isSelected ? 'text-emerald-100' : 'text-slate-400'}`}>
-            USD
+            Ghana Cedis
           </span>
         </div>
 
@@ -100,7 +100,7 @@ export const PackageCardComponent: React.FC<PackageCardProps> = ({
           </div>
           <div className="flex items-center justify-between">
             <span className={isSelected ? 'text-emerald-100' : 'text-slate-400'}>Estimated Return:</span>
-            <span className="font-bold text-lg">${Math.round(pkg.amount * pkg.returnPercentage / 100)}</span>
+            <span className="font-bold text-lg">GHS {Math.round(pkg.amount * pkg.returnPercentage / 100)}</span>
           </div>
         </div>
 

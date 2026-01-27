@@ -1825,12 +1825,10 @@ app.get('/api/admin/payment-matches', authenticateToken, requireAdmin, async (re
 // Confirm payment completion (admin-only, no receiver confirmation required)
 app.post('/api/admin/payment-matches/:id/confirm', authenticateToken, requireAdmin, async (req, res) => {
   try {
-    // Mark match as fully confirmed
+    // Mark match as confirmed by admin
     const matchResult = await pool.query(`
       UPDATE payment_matches 
-      SET status = 'confirmed', 
-          admin_confirmed_at = CURRENT_TIMESTAMP,
-          receiver_confirmed_at = COALESCE(receiver_confirmed_at, CURRENT_TIMESTAMP),
+      SET status = 'confirmed',
           completed_at = CURRENT_TIMESTAMP
       WHERE id = $1
       RETURNING *

@@ -252,7 +252,7 @@ export async function initializeDatabase() {
     // Seed test users for payment matching workflow
     const testUserCheck = await client.query('SELECT id FROM users WHERE email = $1', ['testgiver@example.com']);
     if (testUserCheck.rows.length === 0) {
-      const passwordHash = await bcryptjs.hash('Test1234', 10);
+      const passwordHash = await bcryptjs.hash('123456', 10);
       
       // Create test giver
       await client.query(`
@@ -287,9 +287,9 @@ export async function initializeDatabase() {
           id, giver_id, receiver_id, package_id, amount, status, admin_approved, created_at, updated_at
         )
         VALUES 
-          ('help-001', 'user-giver-001', 'user-receiver-001', 'pkg-3', 250, 'pending', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-          ('help-002', 'user-giver-001', NULL, 'pkg-2', 100, 'pending', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-          ('help-003', NULL, 'user-receiver-001', 'pkg-1', 25, 'pending', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+            ('help-001', 'user-giver-001', 'user-receiver-001', 'pkg-3', 1500, 'pending', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+            ('help-002', 'user-giver-001', NULL, 'pkg-2', 500, 'pending', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+            ('help-003', NULL, 'user-receiver-001', 'pkg-1', 250, 'pending', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
       `);
       
       console.log('✅ Test help_activities created');

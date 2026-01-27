@@ -33,7 +33,7 @@ export interface User {
 export interface Package {
   id: string;
   name: string;
-  amount: number; // USD
+  amount: number; // GHS
   returnPercentage: number;
   durationDays: number;
   description: string;
