@@ -698,7 +698,7 @@ export const UserDashboard: React.FC = () => {
         {/* Active Help Requests - Persistent Status Display */}
         <div className="grid md:grid-cols-2 gap-6 mb-12">
           {/* Offer Help Status */}
-          {(offerHelpStatus || (paymentMatch && paymentMatch.role === 'giver')) && (
+          {(offerHelpStatus || (paymentMatch && paymentMatch.role === 'giver' && paymentMatch.status !== 'completed')) && (
             <div className="bg-gradient-to-br from-slate-800/40 to-slate-900/40 border border-slate-700/50 rounded-lg p-6 backdrop-blur-sm">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-bold text-white">Offering Help</h3>
@@ -807,6 +807,9 @@ export const UserDashboard: React.FC = () => {
                             );
                             if (response.data.success) {
                               setToast({ message: 'Payment confirmed! Pending admin approval. Countdown will start after verification.', type: 'success' });
+                              // Clear offerHelpStatus after payment is confirmed so matched section disappears
+                              setOfferHelpStatus(null);
+                              localStorage.removeItem('offerHelpStatus');
                               setTimeout(() => fetchPaymentMatchData(), 2000);
                             }
                           } catch (error: unknown) {
@@ -856,7 +859,7 @@ export const UserDashboard: React.FC = () => {
           )}
 
           {/* Receive Help Status */}
-          {(receiveHelpStatus || (paymentMatch && paymentMatch.role === 'receiver')) && (
+          {(receiveHelpStatus || (paymentMatch && paymentMatch.role === 'receiver' && paymentMatch.status !== 'completed')) && (
             <div className="bg-gradient-to-br from-slate-800/40 to-slate-900/40 border border-slate-700/50 rounded-lg p-6 backdrop-blur-sm">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-bold text-white">Requesting Help</h3>
@@ -1152,7 +1155,7 @@ export const UserDashboard: React.FC = () => {
                         <div className="flex items-center justify-between mb-2">
                           <div className="min-w-0 flex-1">
                             <p className="text-white font-semibold text-sm">{pkg.package_name}</p>
-                            <p className="text-slate-400 text-xs">Principal: ₵{pkg.amount.toLocaleString()}</p>
+                            <p className="text-slate-400 text-xs">Principal: ₵{Number(pkg.amount || 0).toLocaleString()}</p>
                           </div>
                           <div className="text-right ml-2">
                             <p className="text-emerald-400 font-bold text-sm">₵{Number(currentValue || 0).toFixed(2)}</p>
