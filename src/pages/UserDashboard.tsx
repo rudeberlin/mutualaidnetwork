@@ -284,19 +284,6 @@ export const UserDashboard: React.FC = () => {
     return () => clearInterval(interval);
   }, [user?.id, token]);
 
-  // Monitor activePackagesCount and clear state only after a completed cycle (matched → completed)
-  useEffect(() => {
-    // Only clear when there are no active packages AND no match data after we have fetched both stats and matches.
-    // Prevents the Offering Help panel from disappearing while a match is still being fetched or processed.
-    if (!loadingStats && hasFetchedMatch && dashboardStats.activePackagesCount === 0 && offerHelpStatus === 'matched' && !paymentMatch) {
-      setOfferHelpStatus(null);
-      setSelectedOfferPackage(null);
-      setPaymentMatch(null);
-      localStorage.removeItem('offerHelpStatus');
-      localStorage.removeItem('selectedOfferPackage');
-    }
-  }, [dashboardStats.activePackagesCount, offerHelpStatus, paymentMatch, loadingStats, hasFetchedMatch]);
-
   // Auto-scroll transactions - vertical sliding
   useEffect(() => {
     const interval = setInterval(() => {
@@ -402,6 +389,18 @@ export const UserDashboard: React.FC = () => {
   };
 
 
+
+  // Show loading state only during initial data fetch
+  if (loadingStats && !hasFetchedMatch) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-emerald-950 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-emerald-500/30 border-t-emerald-500 rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-slate-400 text-lg">Loading dashboard...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-emerald-950">
