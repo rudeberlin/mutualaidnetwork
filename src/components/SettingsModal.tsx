@@ -15,10 +15,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ user, onClose, onS
   const { setUser } = useAuthStore();
   const [formData, setFormData] = useState({
     fullName: user?.fullName || '',
+    username: user?.username || '',
     email: user?.email || '',
     phoneNumber: user?.phoneNumber || '',
     country: user?.country || '',
-    address: '', // New field
     password: '',
     confirmPassword: '',
   });
@@ -190,6 +190,24 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ user, onClose, onS
               placeholder="Your full name"
             />
             {errors.fullName && <p className="text-red-400 text-xs mt-1">{errors.fullName}</p>}
+          </div>
+
+          {/* Username */}
+          <div>
+            <label className="block text-sm font-medium text-slate-300 mb-2 flex items-center gap-2">
+              <UserIcon className="w-4 h-4" />
+              Username
+            </label>
+            <input
+              type="text"
+              name="username"
+              value={formData.username}
+              onChange={handleChange}
+              disabled={true}
+              className="w-full px-4 py-2 bg-slate-700/50 border border-slate-600 rounded-lg text-slate-400 placeholder-slate-500 outline-none transition disabled:opacity-50 cursor-not-allowed"
+              placeholder="Username (cannot be changed)"
+            />
+            <p className="text-slate-400 text-xs mt-1">Username cannot be changed</p>
           </div>
 
           {/* Email */}
