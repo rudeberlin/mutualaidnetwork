@@ -107,14 +107,12 @@ export const HomePageNew: React.FC = () => {
                 Learn Our Story <ArrowRight className="w-4 h-4" />
               </a>
             </div>
-            <div className="relative h-96 rounded-2xl bg-gradient-to-br from-emerald-500/20 to-teal-500/20 border border-emerald-500/30 flex items-center justify-center overflow-hidden">
-              <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 p-8 text-center">
-                <Users className="w-16 h-16 text-emerald-400" />
-                <div>
-                  <p className="text-white font-bold text-lg">Community-Driven Finance</p>
-                  <p className="text-slate-300 text-sm mt-2">Transparent platform for giving, receiving, and growing together</p>
-                </div>
-              </div>
+            <div className="relative h-96 rounded-2xl bg-gradient-to-br from-emerald-500/20 to-teal-500/20 border border-emerald-500/30 overflow-hidden">
+              <img 
+                src="/community.jpg"
+                alt="Community-Driven Finance"
+                className="w-full h-full object-cover"
+              />
             </div>
           </div>
         </div>
