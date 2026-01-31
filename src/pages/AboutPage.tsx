@@ -73,25 +73,25 @@ export const AboutPage: React.FC = () => {
               <div className="h-64 rounded-xl bg-gradient-to-br from-emerald-500/20 to-teal-500/20 border border-emerald-500/30 flex items-center justify-center mb-6 overflow-hidden">
                 <img 
                   src="/CEO and Co Founder 1.jpg"
-                  alt="Akosua Mensah"
+                  alt="Johnstone Murray"
                   className="w-full h-full object-cover"
                 />
               </div>
-              <h3 className="text-xl font-bold text-white mb-2">Akosua Mensah</h3>
+              <h3 className="text-xl font-bold text-white mb-2">Johnstone Murray</h3>
               <p className="text-emerald-400 font-semibold mb-4">Co-Founder & CEO</p>
-              <p className="text-slate-300 text-sm">With 10+ years in fintech and community development, Akosua envisioned a platform where mutual aid is accessible to all.</p>
+              <p className="text-slate-300 text-sm">A visionary entrepreneur with over 15 years of experience in financial services and social impact, Johnstone founded the platform to revolutionize community-driven finance and empower individuals through mutual aid.</p>
             </div>
             <div className="text-center">
               <div className="h-64 rounded-xl bg-gradient-to-br from-emerald-500/20 to-teal-500/20 border border-emerald-500/30 flex items-center justify-center mb-6 overflow-hidden">
                 <img 
                   src="/CEO and Co Founder 2c.jpg"
-                  alt="Kwame Osei"
+                  alt="Mrs Wanda Nogueras"
                   className="w-full h-full object-cover"
                 />
               </div>
-              <h3 className="text-xl font-bold text-white mb-2">Kwame Osei</h3>
+              <h3 className="text-xl font-bold text-white mb-2">Mrs Wanda Nogueras</h3>
               <p className="text-emerald-400 font-semibold mb-4">Co-Founder & CTO</p>
-              <p className="text-slate-300 text-sm">A blockchain and security expert, Kwame ensures our platform is built on the strongest technical foundation.</p>
+              <p className="text-slate-300 text-sm">A distinguished technology leader with expertise in fintech infrastructure and cybersecurity, Mrs Nogueras architects secure, scalable solutions that ensure platform integrity and protect our community members.</p>
             </div>
           </div>
         </div>
