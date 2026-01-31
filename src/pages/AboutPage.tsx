@@ -30,11 +30,12 @@ export const AboutPage: React.FC = () => {
                 Our platform removes barriers to entry, providing a transparent, secure space where people can give help, receive support, and earn meaningful returns—all while building stronger community bonds.
               </p>
             </div>
-            <div className="relative h-80 rounded-2xl bg-gradient-to-br from-emerald-500/20 to-teal-500/20 border border-emerald-500/30 flex items-center justify-center overflow-hidden">
-              <div className="text-center z-10">
-                <Heart className="w-16 h-16 text-emerald-400 mx-auto mb-4" />
-                <p className="text-slate-300 font-medium">Community First</p>
-              </div>
+            <div className="relative h-80 rounded-2xl bg-gradient-to-br from-emerald-500/20 to-teal-500/20 border border-emerald-500/30 overflow-hidden">
+              <img 
+                src="/About.jpg"
+                alt="Community First"
+                className="w-full h-full object-cover"
+              />
             </div>
           </div>
         </div>
