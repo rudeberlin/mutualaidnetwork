@@ -285,7 +285,7 @@ export const HomePageNew: React.FC = () => {
             <div>
               <h4 className="text-white font-bold mb-4">Connect</h4>
               <ul className="space-y-2">
-                <li><a href="#" className="text-slate-400 hover:text-emerald-400 transition-colors">Twitter</a></li>
+                <li><a href="https://chat.whatsapp.com/KTRK2Cqp0hzHmserhD43ba?mode=gi_t" target="_blank" rel="noopener noreferrer" className="text-slate-400 hover:text-emerald-400 transition-colors">Whatsapp community</a></li>
                 <li><a href="#" className="text-slate-400 hover:text-emerald-400 transition-colors">Facebook</a></li>
                 <li><a href="#" className="text-slate-400 hover:text-emerald-400 transition-colors">LinkedIn</a></li>
               </ul>
