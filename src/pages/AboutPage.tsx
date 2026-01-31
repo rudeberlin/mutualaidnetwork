@@ -72,7 +72,7 @@ export const AboutPage: React.FC = () => {
             <div className="text-center">
               <div className="h-64 rounded-xl bg-gradient-to-br from-emerald-500/20 to-teal-500/20 border border-emerald-500/30 flex items-center justify-center mb-6 overflow-hidden">
                 <img 
-                  src="https://api.dicebear.com/7.x/avataaars/svg?seed=Akosua&scale=80"
+                  src="/CEO and Co Founder 1.jpg"
                   alt="Akosua Mensah"
                   className="w-full h-full object-cover"
                 />
@@ -84,7 +84,7 @@ export const AboutPage: React.FC = () => {
             <div className="text-center">
               <div className="h-64 rounded-xl bg-gradient-to-br from-emerald-500/20 to-teal-500/20 border border-emerald-500/30 flex items-center justify-center mb-6 overflow-hidden">
                 <img 
-                  src="https://api.dicebear.com/7.x/avataaars/svg?seed=Kwame&scale=80"
+                  src="/CEO and Co Founder 2.jpg"
                   alt="Kwame Osei"
                   className="w-full h-full object-cover"
                 />
