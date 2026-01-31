@@ -59,14 +59,14 @@ export const HomePageNew: React.FC = () => {
                 <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 via-transparent to-teal-500/10"></div>
                 <div className="aspect-video flex flex-col items-center justify-center gap-4 p-8 text-center">
                   <div className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-500/15 border border-emerald-400/30 rounded-full text-emerald-200 text-sm font-semibold">
-                    📍 Placeholder
-                    <span className="text-emerald-100">Replace with dashboard screenshot</span>
+                    ✓ Live Dashboard
+                    <span className="text-emerald-100">Manage your mutual aid experience</span>
                   </div>
-                  <div className="w-24 h-24 rounded-full border-2 border-dashed border-emerald-400/60 flex items-center justify-center bg-slate-900/60">
+                  <div className="w-24 h-24 rounded-full border-2 border-emerald-400/60 flex items-center justify-center bg-slate-900/60">
                     <Heart className="w-10 h-10 text-emerald-300" />
                   </div>
                   <p className="text-slate-300 text-sm max-w-sm">
-                    Swap the image at <span className="font-semibold text-emerald-200">/src/assets/dashboard-preview.png</span> to showcase your real dashboard.
+                    Access your dashboard to track earnings, monitor packages, and connect with community members in real-time.
                   </p>
                 </div>
               </div>
@@ -116,11 +116,13 @@ export const HomePageNew: React.FC = () => {
               </a>
             </div>
             <div className="relative h-96 rounded-2xl bg-gradient-to-br from-emerald-500/20 to-teal-500/20 border border-emerald-500/30 flex items-center justify-center overflow-hidden">
-              <img 
-                src="/what-we-do-placeholder.svg" 
-                alt="What We Do" 
-                className="w-full h-full object-cover"
-              />
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 p-8 text-center">
+                <Users className="w-16 h-16 text-emerald-400" />
+                <div>
+                  <p className="text-white font-bold text-lg">Community-Driven Finance</p>
+                  <p className="text-slate-300 text-sm mt-2">Transparent platform for giving, receiving, and growing together</p>
+                </div>
+              </div>
             </div>
           </div>
         </div>

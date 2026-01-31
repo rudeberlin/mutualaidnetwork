@@ -23,16 +23,8 @@ export const Navbar: React.FC<NavbarProps> = ({ isAdmin = false }) => {
     <nav className="glass-lg sticky top-0 z-50 px-6 py-4 border-b border-emerald-500/20">
       <div className="max-w-7xl mx-auto flex items-center justify-between">
         <Link to="/" className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-lg flex items-center justify-center flex-shrink-0 relative overflow-hidden">
-            <img 
-              src="/logo-placeholder.svg" 
-              alt="Logo" 
-              className="w-full h-full object-cover"
-              onError={(e) => {
-                (e.currentTarget as HTMLImageElement).style.display = 'none';
-                (e.currentTarget.parentElement as HTMLElement).innerHTML = '<span class="text-dark-900 font-bold">MAN</span>';
-              }}
-            />
+          <div className="w-10 h-10 bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-lg flex items-center justify-center flex-shrink-0">
+            <span className="text-white font-bold text-xs">MAN</span>
           </div>
           <span className="hidden sm:inline text-xl font-bold bg-gradient-to-r from-emerald-400 to-emerald-600 bg-clip-text text-transparent">
             Mutual Aid Network

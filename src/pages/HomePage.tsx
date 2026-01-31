@@ -60,17 +60,14 @@ export const HomePage: React.FC = () => {
                   {/* Background gradient effect */}
                   <div className="absolute inset-0 bg-gradient-to-br from-gold-400/5 via-transparent to-emerald-500/5"></div>
                   
-                  {/* Placeholder content - EASY TO REPLACE */}
+                  {/* Professional preview content */}
                   <div className="relative text-center space-y-4">
                     <div className="inline-block p-4 bg-gold-500/10 rounded-full group-hover:bg-gold-500/20 transition-all">
                       <TrendingUp size={48} className="text-gold-400" />
                     </div>
                     <div>
-                      <p className="text-gold-400 font-bold text-lg">Dashboard Preview</p>
-                      <p className="text-slate-400 text-sm mt-1">📍 PLACEHOLDER: Replace with dashboard screenshot</p>
-                      <p className="text-slate-500 text-xs mt-2 max-w-xs mx-auto">
-                        Image path: <code className="bg-slate-900/50 px-2 py-1 rounded text-gold-300">/src/assets/dashboard-preview.png</code>
-                      </p>
+                      <p className="text-gold-400 font-bold text-lg">Real-Time Dashboard</p>
+                      <p className="text-slate-300 text-sm mt-1">Track earnings, manage packages, and connect with your community</p>
                     </div>
                   </div>
                 </div>
