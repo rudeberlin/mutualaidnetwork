@@ -140,11 +140,13 @@ export const Footer: React.FC = () => {
           <div>
             <h3 className="text-emerald-400 font-semibold mb-4">Contact</h3>
             <p className="text-dark-300 text-sm">
-              Email: support@mutualaidnetwork.com
+              Email: support@mutualaidnetworks.org
               <br />
-              Phone: +1 (555) 123-4567
+              Phone: +61435649270
               <br />
-              Address: 123 Community Way, New York, NY 10001
+              International: 17 Philip Street, Melton South, VIC 3338 AU
+              <br />
+              Local: 12 Stanbic Height, Accra, GH
               <br />
               <span className="status-badge mt-3 inline-block">
                 Verified & Secure Platform
