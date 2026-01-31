@@ -52,25 +52,15 @@ export const HomePage: React.FC = () => {
               </div>
             </div>
 
-            {/* Hero Image - Professional Dashboard Screenshot Placeholder */}
+            {/* Hero Image - Homepage Images */}
             <div className="hidden md:flex md:flex-col gap-6">
-              {/* Main Image Placeholder */}
+              {/* Main Image */}
               <div className="glass-lg rounded-2xl overflow-hidden aspect-video flex items-center justify-center bg-gradient-to-br from-slate-800 to-slate-900 border border-gold-500/20 group hover:border-gold-400/50 transition-all">
-                <div className="relative w-full h-full flex items-center justify-center p-8">
-                  {/* Background gradient effect */}
-                  <div className="absolute inset-0 bg-gradient-to-br from-gold-400/5 via-transparent to-emerald-500/5"></div>
-                  
-                  {/* Professional preview content */}
-                  <div className="relative text-center space-y-4">
-                    <div className="inline-block p-4 bg-gold-500/10 rounded-full group-hover:bg-gold-500/20 transition-all">
-                      <TrendingUp size={48} className="text-gold-400" />
-                    </div>
-                    <div>
-                      <p className="text-gold-400 font-bold text-lg">Real-Time Dashboard</p>
-                      <p className="text-slate-300 text-sm mt-1">Track earnings, manage packages, and connect with your community</p>
-                    </div>
-                  </div>
-                </div>
+                <img 
+                  src="/Homepage 1.jpg"
+                  alt="Dashboard Preview"
+                  className="w-full h-full object-cover"
+                />
               </div>
 
               {/* Stats Cards Below Image */}

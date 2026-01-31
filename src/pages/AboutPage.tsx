@@ -84,7 +84,7 @@ export const AboutPage: React.FC = () => {
             <div className="text-center">
               <div className="h-64 rounded-xl bg-gradient-to-br from-emerald-500/20 to-teal-500/20 border border-emerald-500/30 flex items-center justify-center mb-6 overflow-hidden">
                 <img 
-                  src="/CEO and Co Founder 2.jpg"
+                  src="/CEO and Co Founder 2c.jpg"
                   alt="Kwame Osei"
                   className="w-full h-full object-cover"
                 />
