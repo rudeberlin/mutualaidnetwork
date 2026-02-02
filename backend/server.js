@@ -1776,6 +1776,42 @@ app.post('/api/admin/create-manual-match', authenticateToken, requireAdmin, asyn
 
     const userId = userResult.rows[0].id;
 
+    // Look up matched user by email/phone/name/username/display_id
+    const matchedLookup = (matchedWithEmail || matchedWithPhone || matchedWithName || '').trim();
+    if (!matchedLookup) {
+      return res.status(400).json({
+        success: false,
+        error: 'Matched user email/phone/name is required for manual matches'
+      });
+    }
+
+    const matchedUserResult = await pool.query(
+      `SELECT id, full_name, email, phone_number, username
+       FROM users
+       WHERE LOWER(email) = LOWER($1)
+          OR LOWER(username) = LOWER($1)
+          OR LOWER(full_name) = LOWER($1)
+          OR phone_number = $1
+          OR display_id = $1
+          OR CAST(user_number AS VARCHAR) = $1
+       ORDER BY created_at DESC
+       LIMIT 1`,
+      [matchedLookup]
+    );
+
+    if (matchedUserResult.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: `Matched user '${matchedLookup}' not found in system. Use email, username, phone, or display ID.`
+      });
+    }
+
+    const matchedUserId = matchedUserResult.rows[0].id;
+
+    // Determine giver/receiver based on role
+    const giverId = role === 'giver' ? userId : matchedUserId;
+    const receiverId = role === 'receiver' ? userId : matchedUserId;
+
     // Set payment deadline to 6 hours from now
     const paymentDeadline = new Date();
     paymentDeadline.setHours(paymentDeadline.getHours() + 6);
@@ -1789,26 +1825,91 @@ app.post('/api/admin/create-manual-match', authenticateToken, requireAdmin, asyn
     const matchedPackageId = pkgMatch.rows[0]?.id || 'pkg-1';
     const matchedDuration = pkgMatch.rows[0]?.duration_days || 5;
 
-    const activityId = uuidv4();
-    const helpActivityResult = await pool.query(`
-      INSERT INTO help_activities (
-        id, ${role === 'receiver' ? 'receiver_id' : 'giver_id'}, 
-        package_id, amount, status, payment_method, payment_deadline, admin_approved, 
-        matched_at, manual_entry, matched_with_name, matched_with_email, 
-        matched_with_phone, payment_account, maturity_date
-      )
-      VALUES ($1, $2, $3, $4, 'matched', $5, $6, true, CURRENT_TIMESTAMP, true, $7, $8, $9, $10, CURRENT_TIMESTAMP + ($11 || ' days')::interval)
-      RETURNING *
-    `, [
-      activityId, userId, matchedPackageId, amount, paymentMethod || 'Manual Entry',
-      paymentDeadline, matchedWithName, matchedWithEmail || '',
-      matchedWithPhone || '', paymentAccount || '', matchedDuration
-    ]);
+    // Create or reuse giver activity
+    let giverActivityId = null;
+    const existingGiver = await pool.query(
+      `SELECT id FROM help_activities 
+       WHERE giver_id = $1 AND status IN ('pending', 'matched')
+       ORDER BY created_at DESC LIMIT 1`,
+      [giverId]
+    );
+    if (existingGiver.rows.length > 0) {
+      giverActivityId = existingGiver.rows[0].id;
+    } else {
+      const giverInsert = await pool.query(`
+        INSERT INTO help_activities (
+          id, giver_id, package_id, amount, status, payment_method, payment_deadline, admin_approved,
+          matched_at, manual_entry, matched_with_name, matched_with_email,
+          matched_with_phone, payment_account
+        )
+        VALUES ($1, $2, $3, $4, 'matched', $5, $6, true, CURRENT_TIMESTAMP, true, $7, $8, $9, $10)
+        RETURNING id
+      `, [
+        uuidv4(), giverId, matchedPackageId, amount, paymentMethod || 'Manual Entry',
+        paymentDeadline, matchedWithName, matchedWithEmail || '',
+        matchedWithPhone || '', paymentAccount || ''
+      ]);
+      giverActivityId = giverInsert.rows[0].id;
+    }
 
-    res.json({ 
-      success: true, 
-      data: helpActivityResult.rows[0],
-      message: 'Manual payment match created successfully' 
+    // Create or reuse receiver activity
+    let receiverActivityId = null;
+    const existingReceiver = await pool.query(
+      `SELECT id FROM help_activities 
+       WHERE receiver_id = $1 AND status IN ('pending', 'matched')
+       ORDER BY created_at DESC LIMIT 1`,
+      [receiverId]
+    );
+    if (existingReceiver.rows.length > 0) {
+      receiverActivityId = existingReceiver.rows[0].id;
+    } else {
+      const receiverInsert = await pool.query(`
+        INSERT INTO help_activities (
+          id, receiver_id, package_id, amount, status, payment_method, payment_deadline, admin_approved,
+          matched_at, manual_entry, matched_with_name, matched_with_email,
+          matched_with_phone, payment_account
+        )
+        VALUES ($1, $2, $3, $4, 'matched', $5, $6, true, CURRENT_TIMESTAMP, true, $7, $8, $9, $10)
+        RETURNING id
+      `, [
+        uuidv4(), receiverId, matchedPackageId, amount, paymentMethod || 'Manual Entry',
+        paymentDeadline, matchedWithName, matchedWithEmail || '',
+        matchedWithPhone || '', paymentAccount || ''
+      ]);
+      receiverActivityId = receiverInsert.rows[0].id;
+    }
+
+    // Update both activities with counterpart linkage and deadlines
+    if (giverActivityId) {
+      await pool.query(`
+        UPDATE help_activities
+        SET receiver_id = $1, status = 'matched', matched_at = CURRENT_TIMESTAMP,
+            payment_deadline = $2, admin_approved = true, manual_entry = true
+        WHERE id = $3
+      `, [receiverId, paymentDeadline, giverActivityId]);
+    }
+
+    if (receiverActivityId) {
+      await pool.query(`
+        UPDATE help_activities
+        SET giver_id = $1, status = 'matched', matched_at = CURRENT_TIMESTAMP,
+            payment_deadline = $2, admin_approved = true, manual_entry = true
+        WHERE id = $3
+      `, [giverId, paymentDeadline, receiverActivityId]);
+    }
+
+    // Create payment match (same flow as auto matching)
+    const primaryActivityId = receiverActivityId || giverActivityId;
+    const matchResult = await pool.query(`
+      INSERT INTO payment_matches (giver_id, receiver_id, help_activity_id, amount, payment_deadline, matched_by, status)
+      VALUES ($1, $2, $3, $4, $5, $6, 'pending')
+      RETURNING *
+    `, [giverId, receiverId, primaryActivityId, amount, paymentDeadline, req.userId]);
+
+    res.json({
+      success: true,
+      data: matchResult.rows[0],
+      message: 'Manual payment match created successfully'
     });
   } catch (error) {
     console.error('Manual match creation error:', error);
