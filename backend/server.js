@@ -1423,8 +1423,8 @@ app.get('/api/admin/pending-receivers', authenticateToken, requireAdmin, async (
   try {
     // Get users REQUESTING to receive help - these have receiver_id set, giver_id NULL, and no match yet
     const result = await pool.query(`
-      SELECT DISTINCT ON (u.id) u.id, u.full_name, u.email, u.phone_number, 
-             p.name as package_name, ha.amount, ha.created_at, ha.id as activity_id,
+            SELECT DISTINCT ON (u.id) u.id, u.full_name, u.email, u.phone_number, 
+              p.name as package_name, ha.amount, ha.created_at, ha.id as activity_id,
              pm.type as payment_method
       FROM help_activities ha
       JOIN users u ON ha.receiver_id = u.id
@@ -1436,7 +1436,8 @@ app.get('/api/admin/pending-receivers', authenticateToken, requireAdmin, async (
         ORDER BY pm2.added_at DESC
         LIMIT 1
       ) pm ON true
-      WHERE ha.status = 'pending' AND ha.receiver_id IS NOT NULL AND ha.giver_id IS NULL
+      WHERE (LOWER(ha.status) = 'pending' OR ha.status IS NULL)
+        AND ha.receiver_id IS NOT NULL AND ha.giver_id IS NULL
       ORDER BY u.id, ha.created_at ASC
     `);
     res.json({ success: true, data: result.rows });
@@ -1450,7 +1451,8 @@ app.get('/api/admin/available-givers', authenticateToken, requireAdmin, async (r
   try {
     // Get users who OFFERED to give help (have giver_id set, no receiver matched yet)
     const result = await pool.query(`
-      SELECT DISTINCT ON (u.id) u.id, u.full_name, u.email, u.phone_number, u.total_earnings,
+            SELECT DISTINCT ON (u.id) u.id, u.full_name, u.email, u.phone_number, u.total_earnings,
+              ha.id as activity_id, ha.status, ha.created_at,
              pm.type as payment_method
       FROM users u
       JOIN help_activities ha ON u.id = ha.giver_id
@@ -1461,7 +1463,8 @@ app.get('/api/admin/available-givers', authenticateToken, requireAdmin, async (r
         ORDER BY pm2.added_at DESC
         LIMIT 1
       ) pm ON true
-      WHERE ha.status = 'pending' AND ha.giver_id IS NOT NULL AND ha.receiver_id IS NULL
+      WHERE (LOWER(ha.status) = 'pending' OR ha.status IS NULL)
+        AND ha.giver_id IS NOT NULL AND ha.receiver_id IS NULL
       AND u.role = 'member'
       ORDER BY u.id, ha.created_at ASC
     `);

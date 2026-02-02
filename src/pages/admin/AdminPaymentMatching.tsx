@@ -104,6 +104,17 @@ export const AdminPaymentMatching: React.FC = () => {
       if (matchesRes.data.success) setMatches(matchesRes.data.data);
       if (manualMatchesRes.data.success) setManualMatches(manualMatchesRes.data.data);
     } catch (error) {
+      if (axios.isAxiosError(error)) {
+        const status = error.response?.status;
+        if (status === 401) {
+          setToast({ message: 'Session expired. Please log in again.', type: 'error' });
+        } else {
+          const errorMsg = error.response?.data?.error || error.message || 'Failed to fetch matching data';
+          setToast({ message: errorMsg, type: 'error' });
+        }
+      } else {
+        setToast({ message: 'Failed to fetch matching data', type: 'error' });
+      }
       console.error('Failed to fetch matching data:', error);
     }
   }, [token]);
