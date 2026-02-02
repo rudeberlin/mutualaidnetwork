@@ -603,11 +603,16 @@ app.get('/api/user/:userId/stats', authenticateToken, async (req, res) => {
 
 // Count active packages (matched/active help_activities OR confirmed/completed manual matches)
         const activePackagesResult = await pool.query(
-          `SELECT COUNT(DISTINCT ha.id) as count 
-           FROM help_activities ha
-           LEFT JOIN payment_matches pm ON pm.help_activity_id = ha.id AND pm.status IN ('confirmed', 'completed')
-           WHERE (ha.giver_id = $1 OR ha.receiver_id = $1)
-             AND (ha.status IN ('matched', 'active') OR pm.status IN ('confirmed', 'completed'))`,
+          `SELECT CASE WHEN COUNT(*) > 0 THEN 1 ELSE 0 END as count
+           FROM (
+             SELECT ha.id
+             FROM help_activities ha
+             LEFT JOIN payment_matches pm ON pm.help_activity_id = ha.id AND pm.status IN ('confirmed', 'completed')
+             WHERE (ha.giver_id = $1 OR ha.receiver_id = $1)
+               AND (ha.status IN ('matched', 'active') OR pm.status IN ('confirmed', 'completed'))
+             ORDER BY CASE WHEN pm.created_at IS NOT NULL THEN pm.created_at ELSE ha.created_at END DESC
+             LIMIT 1
+           ) latest_active`,
           [userId]
         );
 
@@ -646,7 +651,8 @@ app.get('/api/user/:userId/stats', authenticateToken, async (req, res) => {
            LEFT JOIN payment_matches pm ON pm.help_activity_id = ha.id AND pm.status IN ('confirmed', 'completed')
            WHERE (ha.giver_id = $1 OR ha.receiver_id = $1)
              AND (ha.status IN ('matched', 'active') OR pm.status IN ('confirmed', 'completed'))
-           ORDER BY CASE WHEN pm.created_at IS NOT NULL THEN pm.created_at ELSE ha.created_at END DESC`,
+           ORDER BY CASE WHEN pm.created_at IS NOT NULL THEN pm.created_at ELSE ha.created_at END DESC
+           LIMIT 1`,
           [userId]
         );
 
