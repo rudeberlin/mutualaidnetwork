@@ -41,12 +41,27 @@ interface PaymentMatch {
   created_at: string;
 }
 
+interface ManualMatch {
+  id: number;
+  user_id: string;
+  username: string;
+  user_name: string;
+  role: string;
+  amount: number;
+  matched_with_name: string;
+  matched_with_email?: string;
+  matched_with_phone?: string;
+  status: string;
+  created_at: string;
+}
+
 type AssignModalState = { type: 'receiver'; data: PendingReceiver } | { type: 'giver'; data: AvailableGiver } | null;
 
 export const AdminPaymentMatching: React.FC = () => {
   const [pendingReceivers, setPendingReceivers] = useState<PendingReceiver[]>([]);
   const [availableGivers, setAvailableGivers] = useState<AvailableGiver[]>([]);
   const [matches, setMatches] = useState<PaymentMatch[]>([]);
+  const [manualMatches, setManualMatches] = useState<ManualMatch[]>([]);
   const [selectedReceiver, setSelectedReceiver] = useState<PendingReceiver | null>(null);
   const [selectedGiver, setSelectedGiver] = useState<AvailableGiver | null>(null);
   const [showAssignModal, setShowAssignModal] = useState<AssignModalState>(null);
@@ -68,7 +83,7 @@ export const AdminPaymentMatching: React.FC = () => {
 
   const fetchData = useCallback(async () => {
     try {
-      const [receiversRes, giversRes, matchesRes] = await Promise.all([
+      const [receiversRes, giversRes, matchesRes, manualMatchesRes] = await Promise.all([
         axios.get(`${API_URL}/api/admin/pending-receivers`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
@@ -78,11 +93,15 @@ export const AdminPaymentMatching: React.FC = () => {
         axios.get(`${API_URL}/api/admin/payment-matches`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
+        axios.get(`${API_URL}/api/admin/manual-matches`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
       ]);
 
       if (receiversRes.data.success) setPendingReceivers(receiversRes.data.data);
       if (giversRes.data.success) setAvailableGivers(giversRes.data.data);
       if (matchesRes.data.success) setMatches(matchesRes.data.data);
+      if (manualMatchesRes.data.success) setManualMatches(manualMatchesRes.data.data);
     } catch (error) {
       console.error('Failed to fetch matching data:', error);
     }
@@ -551,6 +570,41 @@ export const AdminPaymentMatching: React.FC = () => {
                   )
                 )}
               </div>
+
+              {/* Manual Matches Section */}
+              {manualMatches.length > 0 && (
+                <div className="mt-6 pt-6 border-t border-slate-700 space-y-2">
+                  <p className="text-slate-300 text-sm font-semibold mb-3 text-amber-300">
+                    📌 Manual Matches (Already Assigned):
+                  </p>
+                  {manualMatches
+                    .filter(mm => 
+                      showAssignModal.type === 'receiver' 
+                        ? mm.role === 'giver' 
+                        : mm.role === 'receiver'
+                    )
+                    .map((manualMatch) => (
+                      <div
+                        key={manualMatch.id}
+                        className="p-3 bg-amber-900/20 border border-amber-700/50 rounded-lg"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-amber-100 font-semibold">{manualMatch.user_name || manualMatch.username}</p>
+                            <p className="text-amber-200/70 text-xs">Matched with: {manualMatch.matched_with_name}</p>
+                            {manualMatch.matched_with_email && (
+                              <p className="text-amber-200/70 text-xs">{manualMatch.matched_with_email}</p>
+                            )}
+                          </div>
+                          <div className="text-right">
+                            <p className="text-amber-300 font-bold text-sm">${manualMatch.amount}</p>
+                            <p className="text-amber-200/70 text-xs capitalize">{manualMatch.status}</p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              )}
             </div>
           </div>
         </div>

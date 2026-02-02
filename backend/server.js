@@ -1825,6 +1825,32 @@ app.get('/api/admin/payment-matches', authenticateToken, requireAdmin, async (re
   }
 });
 
+// Get manual matches (created via manual entry)
+app.get('/api/admin/manual-matches', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT 
+        id, 
+        user_id, 
+        username, 
+        user_name, 
+        role, 
+        amount, 
+        matched_with_name, 
+        matched_with_email, 
+        matched_with_phone, 
+        status, 
+        created_at
+      FROM manual_payment_matches
+      WHERE status IN ('pending', 'confirmed', 'completed')
+      ORDER BY created_at DESC
+    `);
+    res.json({ success: true, data: result.rows });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // Confirm payment completion (admin-only, no receiver confirmation required)
 app.post('/api/admin/payment-matches/:id/confirm', authenticateToken, requireAdmin, async (req, res) => {
   try {
