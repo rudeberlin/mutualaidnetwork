@@ -454,7 +454,15 @@ app.get('/api/user/:id', authenticateToken, async (req, res) => {
     // Sanitize profile photo to prevent ENOTFOUND base errors
     const sanitizedUser = {
       ...user,
-      profile_photo: sanitizeImageUrl(user.profile_photo, API_URL)
+      profile_photo: sanitizeImageUrl(user.profile_photo, API_URL),
+      isVerified: user.is_verified,
+      paymentMethodVerified: user.payment_method_verified,
+      registeredPackageId: user.registered_package_id,
+      fullName: user.full_name,
+      profilePhoto: user.profile_photo,
+      phoneNumber: user.phone_number,
+      myReferralCode: user.my_referral_code,
+      createdAt: user.created_at
     };
 
     res.json({

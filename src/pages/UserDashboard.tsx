@@ -269,6 +269,10 @@ export const UserDashboard: React.FC = () => {
           
           // Update user verification status if it has changed
           if (response.data.data.isVerified !== user.isVerified) {
+            console.log('[UserDashboard] Verification status changed:', { 
+              old: user.isVerified, 
+              new: response.data.data.isVerified 
+            });
             updateUser({ isVerified: response.data.data.isVerified });
           }
         }
@@ -281,7 +285,7 @@ export const UserDashboard: React.FC = () => {
     // Poll every 10 seconds to check if verification status has changed
     const interval = setInterval(fetchUserProfile, 10000);
     return () => clearInterval(interval);
-  }, [user?.id, token, user?.isVerified, updateUser]);
+  }, [user?.id, token]);
 
   // Fetch giver maturity status (determines if "Receive Help" button should be enabled)
   useEffect(() => {
