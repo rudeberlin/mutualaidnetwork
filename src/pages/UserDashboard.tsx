@@ -565,11 +565,11 @@ export const UserDashboard: React.FC = () => {
               </div>
             </div>
           </div>
-          <div className="flex gap-3">
+          <div className="flex gap-3 flex-wrap">
             <button
               onClick={handleOfferHelp}
               disabled={!currentUser.isVerified || offerHelpStatus !== null || dashboardStats.activePackagesCount > 0}
-              className={`flex items-center gap-2 px-6 py-3 font-semibold rounded-lg transition-all shadow-lg ${
+              className={`hidden sm:flex items-center gap-2 px-6 py-3 font-semibold rounded-lg transition-all shadow-lg ${
                 (!currentUser.isVerified || offerHelpStatus !== null || dashboardStats.activePackagesCount > 0)
                   ? 'bg-slate-400 text-gray-600 cursor-not-allowed opacity-50'
                   : 'bg-white text-slate-900 hover:bg-slate-100'
@@ -588,7 +588,7 @@ export const UserDashboard: React.FC = () => {
             <button
               onClick={handleReceiveHelp}
               disabled={!giverMaturity?.can_request_help || receiveHelpStatus !== null}
-              className={`flex items-center gap-2 px-6 py-3 font-semibold rounded-lg transition-all ${
+              className={`hidden sm:flex items-center gap-2 px-6 py-3 font-semibold rounded-lg transition-all ${
                 !giverMaturity?.can_request_help || receiveHelpStatus !== null
                   ? 'bg-slate-500 text-gray-300 cursor-not-allowed opacity-50'
                   : 'bg-emerald-500 text-white hover:bg-emerald-600'
@@ -616,11 +616,11 @@ export const UserDashboard: React.FC = () => {
               className="flex items-center gap-2 px-6 py-3 bg-slate-800/50 border border-emerald-500/30 text-emerald-400 rounded-lg hover:bg-slate-800 hover:border-emerald-400 transition-all"
             >
               <Settings size={20} />
-              Settings
+              <span className="hidden sm:inline">Settings</span>
             </button>
             <button
               onClick={() => setShowPaymentModal(true)}
-              className="flex items-center gap-2 px-6 py-3 bg-emerald-500/10 border border-emerald-500 text-emerald-400 rounded-lg hover:bg-emerald-500/20 transition-all"
+              className="hidden sm:flex items-center gap-2 px-6 py-3 bg-emerald-500/10 border border-emerald-500 text-emerald-400 rounded-lg hover:bg-emerald-500/20 transition-all"
             >
               <CreditCard size={20} />
               Payment Method
