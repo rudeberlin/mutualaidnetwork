@@ -638,7 +638,7 @@ export const UserDashboard: React.FC = () => {
             <p className="text-3xl font-bold text-white">
               ${loadingStats ? '...' : Number(dashboardStats.totalEarnings || 0).toFixed(2)}
             </p>
-            <p className="text-emerald-400 text-sm mt-2">+12% this month</p>
+            <p className="text-emerald-400 text-sm mt-2">Monthly earnings</p>
           </div>
 
           <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 border border-slate-700/50 rounded-lg p-6 backdrop-blur-sm hover:border-emerald-500/30 transition-all">

@@ -602,15 +602,15 @@ app.get('/api/user/:userId/stats', authenticateToken, async (req, res) => {
           [userId]
         );
 
-        // Count help provided (treat matched/active/confirmed/completed as provided)
+        // Count help provided = number of payments sent (giver with confirmed/completed status)
         const helpProvidedResult = await pool.query(
-          `SELECT COUNT(*) as count 
-           FROM help_activities 
-           WHERE giver_id = $1 AND status IN ('matched', 'active', 'confirmed', 'completed')`,
+          `SELECT COUNT(DISTINCT giver_id) as count 
+           FROM payment_matches 
+           WHERE giver_id = $1 AND status IN ('confirmed', 'completed')`,
           [userId]
         );
 
-        // Get active package details (matched and active) for both roles with derived maturity
+        // Get active package details (matched and active) for both roles, including manual matches
         const activePackagesDetailsResult = await pool.query(
           `SELECT p.id, COALESCE(p.name, 'Manual Package') as package_name,
                   COALESCE(p.amount, ha.amount) as amount,
@@ -618,24 +618,26 @@ app.get('/api/user/:userId/stats', authenticateToken, async (req, res) => {
                   COALESCE(p.duration_days, 5) as duration_days,
                   COALESCE(p.description, 'Manual entry package') as description,
                   ha.package_id, 
-                  ha.created_at as subscribed_at,
+                  CASE WHEN pm.created_at IS NOT NULL THEN pm.created_at ELSE ha.created_at END as subscribed_at,
                   ha.maturity_date,
-                  ha.status, ha.id as activity_id,
+                  CASE WHEN pm.status IN ('confirmed', 'completed') THEN 'active' ELSE ha.status END as status,
+                  ha.id as activity_id,
                   CASE WHEN ha.giver_id = $1 THEN 'giver' ELSE 'receiver' END AS user_role,
                   COALESCE(
                     EXTRACT(EPOCH FROM (
                       COALESCE(
                         ha.maturity_date,
-                        ha.created_at + (COALESCE(p.duration_days,5) || ' days')::interval
+                        CASE WHEN pm.created_at IS NOT NULL THEN pm.created_at ELSE ha.created_at END + (COALESCE(p.duration_days,5) || ' days')::interval
                       ) - CURRENT_TIMESTAMP
                     )),
                     0
                   ) as time_remaining_seconds
            FROM help_activities ha
            LEFT JOIN packages p ON ha.package_id = p.id
+           LEFT JOIN payment_matches pm ON pm.help_activity_id = ha.id AND pm.status IN ('confirmed', 'completed')
            WHERE (ha.giver_id = $1 OR ha.receiver_id = $1)
-             AND ha.status IN ('matched', 'active')
-           ORDER BY ha.created_at DESC`,
+             AND (ha.status IN ('matched', 'active') OR pm.status IN ('confirmed', 'completed'))
+           ORDER BY CASE WHEN pm.created_at IS NOT NULL THEN pm.created_at ELSE ha.created_at END DESC`,
           [userId]
         );
 
