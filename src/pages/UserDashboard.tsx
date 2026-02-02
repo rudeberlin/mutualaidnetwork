@@ -263,8 +263,8 @@ export const UserDashboard: React.FC = () => {
         
         if (response.data.success && response.data.data) {
           // Update registered package
-          if (response.data.data.registered_package_id) {
-            setRegisteredPackageId(response.data.data.registered_package_id);
+           if (response.data.data.registeredPackageId) {
+             setRegisteredPackageId(response.data.data.registeredPackageId);
           }
           
           // Update user verification status if it has changed
