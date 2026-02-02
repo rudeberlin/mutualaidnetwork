@@ -499,6 +499,18 @@ export const AdminPaymentMatching: React.FC = () => {
                 onClick={() => {
                   setShowAssignModal(null);
                   setAssignModalTab('available');
+                  // Reset manual entry form
+                  setManualEntry({
+                    username: '',
+                    role: 'receiver',
+                    amount: '',
+                    matchedWithName: '',
+                    matchedWithEmail: '',
+                    matchedWithPhone: '',
+                    paymentAccount: '',
+                    paymentMethod: ''
+                  });
+                  setRequiredFieldErrors(new Set());
                 }}
                 className="text-slate-400 hover:text-white"
               >
@@ -519,7 +531,25 @@ export const AdminPaymentMatching: React.FC = () => {
                 Available Pool
               </button>
               <button
-                onClick={() => setAssignModalTab('manual')}
+                onClick={() => {
+                  setAssignModalTab('manual');
+                  // Pre-populate form with selected user info
+                  const data = showAssignModal.data;
+                  const amountValue = showAssignModal.type === 'receiver' 
+                    ? String((data as PendingReceiver).amount || '') 
+                    : '';
+                  setManualEntry({
+                    username: data.email || data.full_name || '',
+                    role: showAssignModal.type, // 'receiver' or 'giver'
+                    amount: amountValue,
+                    matchedWithName: '',
+                    matchedWithEmail: '',
+                    matchedWithPhone: '',
+                    paymentAccount: '',
+                    paymentMethod: ''
+                  });
+                  setRequiredFieldErrors(new Set());
+                }}
                 className={`flex-1 px-4 py-3 font-semibold transition-all ${
                   assignModalTab === 'manual'
                     ? 'text-purple-400 border-b-2 border-purple-400'
