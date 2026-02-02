@@ -89,7 +89,7 @@ export const UserDashboard: React.FC = () => {
     amount?: number;
   } | null>(null);
   const transactionContainerRef = useRef<HTMLDivElement>(null);
-  const { user, token, initializeFromStorage } = useAuthStore();
+  const { user, token, initializeFromStorage, updateUser } = useAuthStore();
   const currentUser = user || MOCK_CURRENT_USER;
   
   useEffect(() => {
@@ -251,7 +251,7 @@ export const UserDashboard: React.FC = () => {
     return () => clearInterval(interval);
   }, [user?.id, token]);
 
-  // Fetch user's registered package
+  // Fetch user's registered package and check verification status
   useEffect(() => {
     const fetchUserProfile = async () => {
       if (!user?.id || !token) return;
@@ -261,8 +261,16 @@ export const UserDashboard: React.FC = () => {
           headers: { Authorization: `Bearer ${token}` }
         });
         
-        if (response.data.success && response.data.data.registered_package_id) {
-          setRegisteredPackageId(response.data.data.registered_package_id);
+        if (response.data.success && response.data.data) {
+          // Update registered package
+          if (response.data.data.registered_package_id) {
+            setRegisteredPackageId(response.data.data.registered_package_id);
+          }
+          
+          // Update user verification status if it has changed
+          if (response.data.data.isVerified !== user.isVerified) {
+            updateUser({ isVerified: response.data.data.isVerified });
+          }
         }
       } catch (error) {
         console.error('Failed to fetch user profile:', error);
@@ -270,7 +278,10 @@ export const UserDashboard: React.FC = () => {
     };
 
     fetchUserProfile();
-  }, [user?.id, token]);
+    // Poll every 10 seconds to check if verification status has changed
+    const interval = setInterval(fetchUserProfile, 10000);
+    return () => clearInterval(interval);
+  }, [user?.id, token, user?.isVerified, updateUser]);
 
   // Fetch giver maturity status (determines if "Receive Help" button should be enabled)
   useEffect(() => {
