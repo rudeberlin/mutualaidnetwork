@@ -376,8 +376,13 @@ export const UserDashboard: React.FC = () => {
           return;
         }
 
-        if (!offerHelpStatus) {
-          alert('You must offer help first before requesting help');
+        if (!giverMaturity?.can_request_help) {
+          const reason = !giverMaturity?.has_active_giver_activity
+            ? 'You must offer help and be matched first'
+            : !giverMaturity?.is_mature
+            ? 'Your package must mature before requesting help'
+            : 'You cannot request help yet';
+          alert(reason);
           return;
         }
 
