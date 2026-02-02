@@ -1858,6 +1858,10 @@ app.get('/api/admin/manual-matches', authenticateToken, requireAdmin, async (req
     `);
     res.json({ success: true, data: result.rows });
   } catch (error) {
+    const msg = String(error?.message || '').toLowerCase();
+    if (msg.includes('manual_payment_matches') && msg.includes('does not exist')) {
+      return res.json({ success: true, data: [], note: 'manual_payment_matches table missing' });
+    }
     res.status(500).json({ success: false, error: error.message });
   }
 });
@@ -2384,6 +2388,22 @@ const server = app.listen(PORT, () => {
         ADD COLUMN IF NOT EXISTS payment_deadline TIMESTAMP,
         ADD COLUMN IF NOT EXISTS matched_at TIMESTAMP,
         ADD COLUMN IF NOT EXISTS admin_approved BOOLEAN DEFAULT FALSE;
+      `);
+
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS manual_payment_matches (
+          id UUID PRIMARY KEY,
+          user_id UUID REFERENCES users(id),
+          username VARCHAR(255),
+          user_name VARCHAR(255),
+          role VARCHAR(20),
+          amount DECIMAL,
+          matched_with_name VARCHAR(255),
+          matched_with_email VARCHAR(255),
+          matched_with_phone VARCHAR(50),
+          status VARCHAR(20) DEFAULT 'pending',
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
       `);
       console.log('✅ Migrations complete');
       
