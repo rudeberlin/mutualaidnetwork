@@ -11,11 +11,6 @@ interface SettingsModalProps {
   onSave?: (updates: Partial<User>) => void;
 }
 
-// Check if user has admin role
-const isUserAdmin = (user: User | null): boolean => {
-  return user?.role === 'admin';
-};
-
 export const SettingsModal: React.FC<SettingsModalProps> = ({ user, onClose, onSave }) => {
   const { setUser } = useAuthStore();
   const [formData, setFormData] = useState({
