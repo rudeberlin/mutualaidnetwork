@@ -569,7 +569,7 @@ export const UserDashboard: React.FC = () => {
             <button
               onClick={handleOfferHelp}
               disabled={!currentUser.isVerified || offerHelpStatus !== null || dashboardStats.activePackagesCount > 0}
-              className={`hidden sm:flex items-center gap-2 px-6 py-3 font-semibold rounded-lg transition-all shadow-lg ${
+              className={`flex items-center gap-2 px-3 sm:px-6 py-2 sm:py-3 font-semibold rounded-lg transition-all shadow-lg text-sm sm:text-base ${
                 (!currentUser.isVerified || offerHelpStatus !== null || dashboardStats.activePackagesCount > 0)
                   ? 'bg-slate-400 text-gray-600 cursor-not-allowed opacity-50'
                   : 'bg-white text-slate-900 hover:bg-slate-100'
@@ -583,12 +583,13 @@ export const UserDashboard: React.FC = () => {
               }
             >
               <Hand size={20} />
-              Offer Help
+              <span className="hidden sm:inline">Offer Help</span>
+              <span className="sm:hidden">Offer</span>
             </button>
             <button
               onClick={handleReceiveHelp}
               disabled={!giverMaturity?.can_request_help || receiveHelpStatus !== null}
-              className={`hidden sm:flex items-center gap-2 px-6 py-3 font-semibold rounded-lg transition-all ${
+              className={`flex items-center gap-2 px-3 sm:px-6 py-2 sm:py-3 font-semibold rounded-lg transition-all text-sm sm:text-base ${
                 !giverMaturity?.can_request_help || receiveHelpStatus !== null
                   ? 'bg-slate-500 text-gray-300 cursor-not-allowed opacity-50'
                   : 'bg-emerald-500 text-white hover:bg-emerald-600'
@@ -604,7 +605,8 @@ export const UserDashboard: React.FC = () => {
               }
             >
               <Hand size={20} />
-              Receive Help
+              <span className="hidden sm:inline">Receive Help</span>
+              <span className="sm:hidden">Receive</span>
               {giverMaturity?.has_active_giver_activity && !giverMaturity?.is_mature && giverMaturity?.time_to_maturity_seconds && (
                 <span className="text-xs ml-1">
                   ({Math.ceil(giverMaturity.time_to_maturity_seconds / 86400)}d)
