@@ -593,12 +593,13 @@ app.get('/api/user/:userId/stats', authenticateToken, async (req, res) => {
     const today = new Date();
     const daysSinceRegistration = Math.floor((today - registrationDate) / (1000 * 60 * 60 * 24));
 
-    // Count active packages (matched or active) for both giver and receiver
+// Count active packages (matched/active help_activities OR confirmed/completed manual matches)
         const activePackagesResult = await pool.query(
-          `SELECT COUNT(*) as count 
-           FROM help_activities 
-           WHERE (giver_id = $1 OR receiver_id = $1)
-             AND status IN ('matched', 'active')`,
+          `SELECT COUNT(DISTINCT ha.id) as count 
+           FROM help_activities ha
+           LEFT JOIN payment_matches pm ON pm.help_activity_id = ha.id AND pm.status IN ('confirmed', 'completed')
+           WHERE (ha.giver_id = $1 OR ha.receiver_id = $1)
+             AND (ha.status IN ('matched', 'active') OR pm.status IN ('confirmed', 'completed'))`,
           [userId]
         );
 
