@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Menu, LogOut, Settings } from 'lucide-react';
+import { Menu, LogOut } from 'lucide-react';
 import { useUIStore } from '../store';
 
 interface NavbarProps {
@@ -12,12 +12,6 @@ export const Navbar: React.FC<NavbarProps> = ({ isAdmin = false }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const isOnDashboard = location.pathname === '/dashboard';
-  const [showMenu, setShowMenu] = useState(false);
-
-  const handleAdminAccess = () => {
-    navigate('/admin');
-    setShowMenu(false);
-  };
 
   return (
     <nav className="glass-lg sticky top-0 z-50 px-6 py-4 border-b border-emerald-500/20">
@@ -52,34 +46,7 @@ export const Navbar: React.FC<NavbarProps> = ({ isAdmin = false }) => {
                 <Menu size={20} />
               </button>
             )}
-            {isOnDashboard && (
-              <div className="relative">
-                <button
-                  onClick={() => setShowMenu(!showMenu)}
-                  className="p-2 glass text-emerald-400 hover:bg-white/20 rounded-lg"
-                  title="Settings"
-                >
-                  <Settings size={20} />
-                </button>
-                {showMenu && (
-                  <div className="absolute right-0 mt-2 w-48 bg-slate-800 border border-slate-700 rounded-lg shadow-lg z-50">
-                    <button
-                      onClick={handleAdminAccess}
-                      className="w-full px-4 py-2 text-left text-slate-200 hover:bg-slate-700 hover:text-emerald-400 transition text-sm"
-                    >
-                      Admin Panel
-                    </button>
-                    <Link
-                      to="/"
-                      onClick={() => setShowMenu(false)}
-                      className="block w-full px-4 py-2 text-left text-slate-200 hover:bg-slate-700 hover:text-emerald-400 transition text-sm border-t border-slate-700"
-                    >
-                      Logout
-                    </Link>
-                  </div>
-                )}
-              </div>
-            )}
+            {/* Settings icon removed from Navbar - handled by UserDashboard component directly */}
             {isOnDashboard ? (
               <button 
                 onClick={() => navigate('/')}
