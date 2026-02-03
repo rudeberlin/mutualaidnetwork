@@ -1313,10 +1313,15 @@ export const UserDashboard: React.FC = () => {
           <div>
             <div className="bg-gradient-to-br from-slate-800/40 to-slate-900/40 border border-slate-700/50 rounded-lg p-8 backdrop-blur-sm mb-8">
               <h3 className="text-xl font-bold text-white mb-6">Available Packages</h3>
+              <p className="text-slate-400 text-sm mb-4">Click any package to offer help</p>
               <div className="space-y-3">
                 {PACKAGES.map((pkg) => (
                   <button
                     key={pkg.id}
+                    onClick={() => {
+                      setPackageSelectionMode('offer');
+                      handlePackageSelect(pkg, 'offer');
+                    }}
                     className="w-full p-4 bg-slate-700/20 border border-slate-600/30 rounded-lg hover:border-emerald-500/50 hover:bg-slate-700/40 transition-all text-left group"
                   >
                     <div className="flex items-center justify-between">
