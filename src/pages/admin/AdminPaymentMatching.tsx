@@ -24,6 +24,10 @@ interface AvailableGiver {
   email: string;
   phone_number: string;
   total_earnings: number;
+  amount: number;
+  package_name?: string;
+  activity_id?: string;
+  package_id?: string;
   payment_method?: string | null;
 }
 
@@ -335,7 +339,7 @@ export const AdminPaymentMatching: React.FC = () => {
                 </div>
                 <div className="flex items-center gap-3">
                   <div className="text-right">
-                    <p className="text-emerald-400 font-bold">${receiver.amount}</p>
+                    <p className="text-emerald-400 font-bold">₵{receiver.amount}</p>
                     <p className="text-slate-400 text-xs">{receiver.package_name}</p>
                   </div>
                   <button
@@ -378,8 +382,10 @@ export const AdminPaymentMatching: React.FC = () => {
                 </div>
                 <div className="flex items-center gap-3">
                   <div className="text-right">
-                    <p className="text-slate-300 text-sm">Total Earned:</p>
-                    <p className="text-blue-400 font-bold">${giver.total_earnings}</p>
+                    <p className="text-blue-400 font-bold">₵{giver.amount}</p>
+                    {giver.package_name && (
+                      <p className="text-slate-400 text-xs">{giver.package_name}</p>
+                    )}
                   </div>
                   <button
                     onClick={(e) => {
