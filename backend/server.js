@@ -1467,11 +1467,11 @@ app.get('/api/admin/pending-receivers', authenticateToken, requireAdmin, async (
     // Get users REQUESTING to receive help - these have receiver_id set, giver_id NULL, and no match yet
     const result = await pool.query(`
             SELECT DISTINCT ON (u.id) u.id, u.full_name, u.email, u.phone_number, 
-              p.name as package_name, ha.amount, ha.created_at, ha.id as activity_id,
+              p.name as package_name, ha.amount, ha.created_at, ha.id as activity_id, ha.package_id,
              pm.type as payment_method
       FROM help_activities ha
       JOIN users u ON ha.receiver_id = u.id
-      JOIN packages p ON ha.package_id = p.id
+      LEFT JOIN packages p ON ha.package_id = p.id
       LEFT JOIN LATERAL (
         SELECT type
         FROM payment_methods pm2
@@ -1495,10 +1495,12 @@ app.get('/api/admin/available-givers', authenticateToken, requireAdmin, async (r
     // Get users who OFFERED to give help (have giver_id set, no receiver matched yet)
     const result = await pool.query(`
             SELECT DISTINCT ON (u.id) u.id, u.full_name, u.email, u.phone_number, u.total_earnings,
-              ha.id as activity_id, ha.status, ha.created_at,
+              ha.id as activity_id, ha.status, ha.created_at, ha.amount, ha.package_id,
+              p.name as package_name,
              pm.type as payment_method
       FROM users u
       JOIN help_activities ha ON u.id = ha.giver_id
+      LEFT JOIN packages p ON ha.package_id = p.id
       LEFT JOIN LATERAL (
         SELECT type
         FROM payment_methods pm2
@@ -2013,13 +2015,15 @@ app.get('/api/admin/manual-matches', authenticateToken, requireAdmin, async (req
 // Confirm payment completion (admin-only, no receiver confirmation required)
 app.post('/api/admin/payment-matches/:id/confirm', authenticateToken, requireAdmin, async (req, res) => {
   try {
-    // Mark match as confirmed by admin
+    // Get the payment match details
     const matchResult = await pool.query(`
-      UPDATE payment_matches 
-      SET status = 'confirmed',
-          completed_at = CURRENT_TIMESTAMP
-      WHERE id = $1
-      RETURNING *
+      SELECT pm.*, 
+             ha.id as activity_id, ha.giver_id, ha.receiver_id, ha.package_id, ha.amount,
+             p.duration_days
+      FROM payment_matches pm
+      LEFT JOIN help_activities ha ON pm.help_activity_id = ha.id
+      LEFT JOIN packages p ON ha.package_id = p.id
+      WHERE pm.id = $1
     `, [req.params.id]);
     
     if (matchResult.rows.length === 0) {
@@ -2027,60 +2031,72 @@ app.post('/api/admin/payment-matches/:id/confirm', authenticateToken, requireAdm
     }
 
     const match = matchResult.rows[0];
+    const durationDays = match.duration_days || 5;
 
-    // Get receiver activity/package info for maturity duration
-    const activityDetails = await pool.query(`
-      SELECT ha.id as receiver_activity_id, ha.package_id, ha.amount, ha.giver_id, ha.receiver_id,
-             COALESCE(p.duration_days, 5) AS duration_days
-      FROM help_activities ha
-      LEFT JOIN packages p ON p.id = ha.package_id
-      WHERE ha.id = $1
-    `, [match.help_activity_id]);
-
-    if (activityDetails.rows.length === 0) {
-      return res.status(404).json({ success: false, error: 'Help activity not found for match' });
-    }
-
-    const activity = activityDetails.rows[0];
-    const maturityInterval = `${activity.duration_days} days`;
-
-    // 1) Complete the receiver's activity so they can offer help next
+    // Mark match as confirmed by admin
     await pool.query(`
-      UPDATE help_activities 
-      SET status = 'completed', updated_at = CURRENT_TIMESTAMP
+      UPDATE payment_matches 
+      SET status = 'confirmed',
+          completed_at = CURRENT_TIMESTAMP
       WHERE id = $1
-    `, [activity.receiver_activity_id]);
+    `, [req.params.id]);
 
-    // 2) Activate (or create) the giver's activity so their maturity timer starts
-    const existingGiverActivity = await pool.query(`
-      SELECT id FROM help_activities 
-      WHERE giver_id = $1 
-        AND status IN ('matched', 'active')
-      ORDER BY created_at DESC
+    // Find and activate the GIVER's help_activity for this specific match
+    const giverActivityResult = await pool.query(`
+      SELECT ha.id, ha.package_id, ha.amount
+      FROM help_activities ha
+      WHERE ha.giver_id = $1
+        AND (ha.receiver_id = $2 OR ha.id = $3)
+        AND ha.status = 'matched'
+      ORDER BY ha.created_at DESC
       LIMIT 1
-    `, [match.giver_id]);
+    `, [match.giver_id, match.receiver_id, match.activity_id]);
 
-    if (existingGiverActivity.rows.length > 0) {
+    if (giverActivityResult.rows.length > 0) {
+      const giverActivity = giverActivityResult.rows[0];
+      // Activate the giver's activity with maturity timer based on their package amount
       await pool.query(`
         UPDATE help_activities 
         SET status = 'active', 
             maturity_date = CURRENT_TIMESTAMP + ($2 || ' days')::interval,
             updated_at = CURRENT_TIMESTAMP
         WHERE id = $1
-      `, [existingGiverActivity.rows[0].id, activity.duration_days]);
+      `, [giverActivity.id, durationDays]);
     } else {
+      // If no matched giver activity found, create one
+      const packageId = match.package_id || 'pkg-1';
       await pool.query(`
         INSERT INTO help_activities (
-          id, giver_id, package_id, amount, status, admin_approved, maturity_date, created_at, updated_at
+          id, giver_id, receiver_id, package_id, amount, status, admin_approved, maturity_date, created_at, updated_at
         ) VALUES (
-          $1, $2, $3, $4, 'active', true, CURRENT_TIMESTAMP + ($5 || ' days')::interval, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+          $1, $2, $3, $4, $5, 'active', true, CURRENT_TIMESTAMP + ($6 || ' days')::interval, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
         )
-      `, [uuidv4(), match.giver_id, activity.package_id || 'pkg-1', activity.amount, activity.duration_days]);
+      `, [uuidv4(), match.giver_id, match.receiver_id, packageId, match.amount, durationDays]);
+    }
+
+    // Find and complete the RECEIVER's help_activity for this specific match
+    const receiverActivityResult = await pool.query(`
+      SELECT ha.id
+      FROM help_activities ha
+      WHERE ha.receiver_id = $1
+        AND (ha.giver_id = $2 OR ha.id = $3)
+        AND ha.status = 'matched'
+      ORDER BY ha.created_at DESC
+      LIMIT 1
+    `, [match.receiver_id, match.giver_id, match.activity_id]);
+
+    if (receiverActivityResult.rows.length > 0) {
+      // Complete the receiver's activity so they can offer help again
+      await pool.query(`
+        UPDATE help_activities 
+        SET status = 'completed', updated_at = CURRENT_TIMESTAMP
+        WHERE id = $1
+      `, [receiverActivityResult.rows[0].id]);
     }
 
     res.json({ 
       success: true, 
-      data: matchResult.rows[0],
+      data: { id: match.id, status: 'confirmed' },
       message: 'Payment verified by admin. Receiver cycle completed; giver package active and maturing.'
     });
   } catch (error) {
