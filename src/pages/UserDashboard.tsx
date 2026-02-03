@@ -87,6 +87,7 @@ export const UserDashboard: React.FC = () => {
     maturity_date?: string;
     package_name?: string;
     amount?: number;
+    package_id?: string;
   } | null>(null);
   const transactionContainerRef = useRef<HTMLDivElement>(null);
   const { user, token, initializeFromStorage, updateUser } = useAuthStore();
@@ -503,9 +504,15 @@ export const UserDashboard: React.FC = () => {
 
             {/* Packages Grid */}
             <div className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {PACKAGES.filter(pkg => 
-                packageSelectionMode === 'offer' || !registeredPackageId || pkg.id === registeredPackageId
-              ).map((pkg) => (
+              {PACKAGES.filter(pkg => {
+                if (packageSelectionMode === 'offer') {
+                  return true; // Show all packages for offering help
+                } else {
+                  // For receiving help, only show the package they originally gave with (from giverMaturity)
+                  const allowedPackageId = giverMaturity?.package_id || registeredPackageId;
+                  return !allowedPackageId || pkg.id === allowedPackageId;
+                }
+              }).map((pkg) => (
                 <div
                   key={pkg.id}
                   className="bg-gradient-to-br from-slate-800/40 to-slate-900/40 border border-slate-700/50 rounded-xl p-6 hover:border-emerald-500/50 transition-all hover:shadow-lg hover:shadow-emerald-500/10 cursor-pointer"
@@ -612,11 +619,13 @@ export const UserDashboard: React.FC = () => {
               title={
                 !giverMaturity?.has_active_giver_activity 
                   ? 'Offer help first before requesting help' 
+                  : giverMaturity?.maturity_date === null
+                  ? 'Waiting for admin to confirm payment and activate your package'
                   : !giverMaturity?.is_mature
-                  ? `Package must mature first (${giverMaturity?.time_to_maturity_seconds ? Math.ceil(giverMaturity.time_to_maturity_seconds / 86400) : '?'} days remaining)`
+                  ? `Your package matures in ${giverMaturity?.time_to_maturity_seconds ? Math.ceil(giverMaturity.time_to_maturity_seconds / 86400) : '?'} days`
                   : receiveHelpStatus !== null 
                   ? 'You already have an active help request' 
-                  : 'Request help from the network'
+                  : 'Your package is mature - you can now request help!'
               }
             >
               <Hand size={20} />

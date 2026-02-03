@@ -682,52 +682,89 @@ app.get('/api/user/:userId/giver-maturity', authenticateToken, async (req, res) 
     
     const userId = req.params.userId;
     
-    // Check if user has any active giver help_activities with maturity dates
-    const result = await pool.query(`
-      SELECT ha.id, ha.maturity_date, ha.status, ha.amount,
+    // Check if user has any giver help_activities (matched, active, or completed with confirmed payment)
+    // First check for active packages with maturity dates
+    const activeResult = await pool.query(`
+      SELECT ha.id, ha.maturity_date, ha.status, ha.amount, ha.package_id,
              p.name as package_name,
+             pm.status as payment_status,
              CASE 
                WHEN ha.maturity_date IS NULL THEN false
                WHEN ha.maturity_date <= CURRENT_TIMESTAMP THEN true
                ELSE false
              END as is_mature,
              CASE 
-               WHEN ha.maturity_date IS NULL THEN 0
+               WHEN ha.maturity_date IS NULL THEN NULL
                ELSE GREATEST(0, EXTRACT(EPOCH FROM (ha.maturity_date - CURRENT_TIMESTAMP)))
              END as time_to_maturity_seconds
       FROM help_activities ha
       LEFT JOIN packages p ON ha.package_id = p.id
+      LEFT JOIN payment_matches pm ON pm.help_activity_id = ha.id
       WHERE ha.giver_id = $1 
-        AND ha.status = 'active'
+        AND ha.status IN ('active', 'completed')
+        AND pm.status IN ('confirmed', 'completed')
+        AND ha.maturity_date IS NOT NULL
       ORDER BY ha.created_at DESC
       LIMIT 1
     `, [userId]);
     
-    if (result.rows.length === 0) {
+    // If we found an active package with maturity date, check if it's mature
+    if (activeResult.rows.length > 0) {
+      const activity = activeResult.rows[0];
+      const canRequestHelp = activity.is_mature;
+      
+      return res.json({ 
+        success: true, 
+        data: {
+          has_active_giver_activity: true,
+          is_mature: activity.is_mature,
+          can_request_help: canRequestHelp,
+          maturity_date: activity.maturity_date,
+          time_to_maturity_seconds: parseFloat(activity.time_to_maturity_seconds || 0),
+          package_name: activity.package_name,
+          amount: parseFloat(activity.amount || 0),
+          package_id: activity.package_id
+        }
+      });
+    }
+    
+    // Check if user has any pending/matched giver activities (not yet mature)
+    const pendingResult = await pool.query(`
+      SELECT ha.id, ha.status, ha.amount, ha.package_id,
+             p.name as package_name
+      FROM help_activities ha
+      LEFT JOIN packages p ON ha.package_id = p.id
+      WHERE ha.giver_id = $1 
+        AND ha.status IN ('pending', 'matched')
+      ORDER BY ha.created_at DESC
+      LIMIT 1
+    `, [userId]);
+    
+    if (pendingResult.rows.length > 0) {
+      const activity = pendingResult.rows[0];
       return res.json({ 
         success: true, 
         data: { 
-          has_active_giver_activity: false,
+          has_active_giver_activity: true,
           is_mature: false,
-          can_request_help: false
+          can_request_help: false,
+          maturity_date: null,
+          time_to_maturity_seconds: null,
+          package_name: activity.package_name,
+          amount: parseFloat(activity.amount || 0),
+          package_id: activity.package_id
         } 
       });
     }
     
-    const activity = result.rows[0];
-    const canRequestHelp = activity.is_mature;
-    
-    res.json({ 
+    // No giver activity found
+    return res.json({ 
       success: true, 
-      data: {
-        has_active_giver_activity: true,
-        is_mature: activity.is_mature,
-        can_request_help: canRequestHelp,
-        maturity_date: activity.maturity_date,
-        time_to_maturity_seconds: parseFloat(activity.time_to_maturity_seconds || 0),
-        package_name: activity.package_name,
-        amount: parseFloat(activity.amount || 0)
-      }
+      data: { 
+        has_active_giver_activity: false,
+        is_mature: false,
+        can_request_help: false
+      } 
     });
   } catch (error) {
     console.error('Giver maturity check error:', error);
