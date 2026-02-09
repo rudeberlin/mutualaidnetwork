@@ -412,12 +412,22 @@ export const UserDashboard: React.FC = () => {
           setSelectedReceivePackage(pkg);
           setReceiveHelpStatus('pending');
           setShowPackageSelection(false);
+          setToast({ message: 'Help request submitted successfully!', type: 'success' });
         }
       }
     } catch (error: unknown) {
       const err = error as AxiosError<{ error?: string }>;
       const errorMsg = err.response?.data?.error || err.message || 'Failed to register for help';
-      alert(errorMsg);
+      
+      // Show appropriate message based on error
+      if (errorMsg.includes('already have an active help request')) {
+        setToast({ 
+          message: '⏳ You already have a pending help request. Please wait to be matched with a giver.', 
+          type: 'info' 
+        });
+      } else {
+        setToast({ message: errorMsg, type: 'error' });
+      }
     }
   };
 

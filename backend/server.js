@@ -67,6 +67,15 @@ function sanitizeImageUrl(url, baseUrl) {
   try {
     await initializeDatabase();
     console.log('✅ Database initialized');
+    
+    // Update package interest rates
+    try {
+      await pool.query(`UPDATE packages SET return_percentage = 30 WHERE id IN ('pkg-1', 'pkg-2')`);
+      await pool.query(`UPDATE packages SET return_percentage = 50 WHERE id IN ('pkg-3', 'pkg-4')`);
+      console.log('✅ Package interest rates updated');
+    } catch (err) {
+      console.log('⚠️  Package interest rate update skipped:', err.message);
+    }
   } catch (err) {
     console.error('❌ Database init error:', err);
   }
