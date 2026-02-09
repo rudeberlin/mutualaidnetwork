@@ -149,10 +149,10 @@ export const HomePage: React.FC = () => {
           <h2 className="heading-md text-center mb-12">Quick Plans Overview</h2>
           <div className="grid md:grid-cols-4 gap-4">
             {[
-              { name: 'Basic', amount: 'GHS 200', roi: '30%', duration: '3 Days' },
-              { name: 'Bronze', amount: 'GHS 500', roi: '30%', duration: '5 Days' },
-              { name: 'Silver', amount: 'GHS 1,500', roi: '50%', duration: '10 Days' },
-              { name: 'Gold', amount: 'GHS 2,500', roi: '50%', duration: '15 Days' },
+              { name: 'Basic Help', amount: 'GHS 250', roi: '30%', duration: '5 Days' },
+              { name: 'Standard Help', amount: 'GHS 500', roi: '30%', duration: '5 Days' },
+              { name: 'Premium Help', amount: 'GHS 1,500', roi: '50%', duration: '15 Days' },
+              { name: 'Elite Help', amount: 'GHS 2,500', roi: '50%', duration: '15 Days' },
             ].map((plan, idx) => (
               <div key={idx} className="glass-lg p-6 rounded-lg text-center hover:bg-white/15 transition">
                 <h3 className="font-semibold text-gold-400 mb-3">{plan.name}</h3>
