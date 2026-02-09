@@ -56,7 +56,7 @@ export const UserDashboard: React.FC = () => {
   const [showPackageSelection, setShowPackageSelection] = useState(false);
   const [packageSelectionMode, setPackageSelectionMode] = useState<'offer' | 'receive'>('offer');
   const [showCurrentPackageModal, setShowCurrentPackageModal] = useState(false);
-  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
   const [registeredPackageId, setRegisteredPackageId] = useState<string | null>(null);
   const [selectedOfferPackage, setSelectedOfferPackage] = useState<Package | null>(() => {
     const saved = localStorage.getItem('selectedOfferPackage');
