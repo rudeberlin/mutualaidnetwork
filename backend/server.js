@@ -699,10 +699,9 @@ app.get('/api/user/:userId/giver-maturity', authenticateToken, async (req, res) 
              END as time_to_maturity_seconds
       FROM help_activities ha
       LEFT JOIN packages p ON ha.package_id = p.id
-      LEFT JOIN payment_matches pm ON pm.help_activity_id = ha.id
+      LEFT JOIN payment_matches pm ON (pm.help_activity_id = ha.id OR pm.giver_id = ha.giver_id)
       WHERE ha.giver_id = $1 
         AND ha.status IN ('active', 'completed')
-        AND pm.status IN ('confirmed', 'completed')
         AND ha.maturity_date IS NOT NULL
       ORDER BY ha.created_at DESC
       LIMIT 1
@@ -882,6 +881,33 @@ app.post('/api/help/register-receive', authenticateToken, async (req, res) => {
 
     if (offerCheck.rows.length === 0) {
       return res.status(400).json({ success: false, error: 'You must offer help first before requesting help' });
+    }
+
+    // Additionally check if user's package has matured (if they have an active package)
+    const maturityCheck = await pool.query(`
+      SELECT ha.id, ha.maturity_date,
+             CASE 
+               WHEN ha.maturity_date IS NULL THEN false
+               WHEN ha.maturity_date <= CURRENT_TIMESTAMP THEN true
+               ELSE false
+             END as is_mature
+      FROM help_activities ha
+      WHERE ha.giver_id = $1 
+        AND ha.status IN ('active', 'completed')
+        AND ha.maturity_date IS NOT NULL
+      ORDER BY ha.created_at DESC
+      LIMIT 1
+    `, [userId]);
+
+    // If they have an active package with maturity date, ensure it has matured
+    if (maturityCheck.rows.length > 0) {
+      const maturity = maturityCheck.rows[0];
+      if (!maturity.is_mature) {
+        return res.status(400).json({ 
+          success: false, 
+          error: 'Your package has not matured yet. Please wait until the maturity date.' 
+        });
+      }
     }
 
     // Check user's registered package - they can only receive for their registered package
