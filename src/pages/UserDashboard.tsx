@@ -542,7 +542,7 @@ export const UserDashboard: React.FC = () => {
                   {/* Title & Amount */}
                   <h3 className="text-xl font-bold text-white mb-2">{pkg.name}</h3>
                   <div className="text-3xl font-bold text-emerald-500 mb-3">
-                    ${pkg.amount.toLocaleString()}
+                    ₵{pkg.amount.toLocaleString()}
                   </div>
 
                   {/* Details */}
