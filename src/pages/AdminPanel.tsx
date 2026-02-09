@@ -200,12 +200,10 @@ export const AdminPanel: React.FC = () => {
                   <h3 className="heading-md text-lg mb-4">Package Overview</h3>
                   <div className="space-y-3">
                     {[
-                      { id: '1', name: 'Basic', amount: 25, returnPercentage: 30, duration: 3 },
-                      { id: '2', name: 'Bronze', amount: 100, returnPercentage: 30, duration: 5 },
-                      { id: '1', name: 'Basic', amount: 250, returnPercentage: 50, duration: 5 },
-                      { id: '2', name: 'Standard', amount: 500, returnPercentage: 50, duration: 5 },
-                      { id: '3', name: 'Premium', amount: 1500, returnPercentage: 50, duration: 15 },
-                      { id: '4', name: 'Elite', amount: 2500, returnPercentage: 50, duration: 15 },
+                      { id: '1', name: 'Basic Help', amount: 250, returnPercentage: 30, duration: 5 },
+                      { id: '2', name: 'Standard Help', amount: 500, returnPercentage: 30, duration: 5 },
+                      { id: '3', name: 'Premium Help', amount: 1500, returnPercentage: 50, duration: 15 },
+                      { id: '4', name: 'Elite Help', amount: 2500, returnPercentage: 50, duration: 15 },
                     ].map((plan) => (
                       <div key={plan.id} className="glass p-3 rounded-lg">
                         <div className="flex justify-between items-center">
