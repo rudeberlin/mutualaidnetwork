@@ -682,8 +682,7 @@ app.get('/api/user/:userId/giver-maturity', authenticateToken, async (req, res) 
     
     const userId = req.params.userId;
     
-    // Check if user has any giver help_activities (matched, active, or completed with confirmed payment)
-    // First check for active packages with maturity dates
+    // Check if user has any giver help_activities (active packages with maturity dates)
     const activeResult = await pool.query(`
       SELECT ha.id, ha.maturity_date, ha.status, ha.amount, ha.package_id,
              p.name as package_name,
@@ -701,7 +700,7 @@ app.get('/api/user/:userId/giver-maturity', authenticateToken, async (req, res) 
       LEFT JOIN packages p ON ha.package_id = p.id
       LEFT JOIN payment_matches pm ON (pm.help_activity_id = ha.id OR pm.giver_id = ha.giver_id)
       WHERE ha.giver_id = $1 
-        AND ha.status IN ('active', 'completed')
+        AND ha.status = 'active'
         AND ha.maturity_date IS NOT NULL
       ORDER BY ha.created_at DESC
       LIMIT 1
@@ -827,7 +826,8 @@ app.post('/api/help/register-offer', authenticateToken, async (req, res) => {
     }
     const pkg = pkgResult.rows[0];
 
-    // Check if user already has an active giver activity (any package)
+    // Check if user already has an active giver activity (not completed)
+    // Allow users who completed a receive cycle to offer help again
     const existing = await pool.query(`
       SELECT id FROM help_activities 
       WHERE giver_id = $1 AND status IN ('pending', 'matched', 'active')
@@ -872,18 +872,7 @@ app.post('/api/help/register-receive', authenticateToken, async (req, res) => {
       return res.status(400).json({ success: false, error: 'Package ID required' });
     }
 
-    // Check if user has registered to offer help first
-    const offerCheck = await pool.query(`
-      SELECT id FROM help_activities 
-      WHERE giver_id = $1 AND status IN ('pending', 'matched', 'active')
-      LIMIT 1
-    `, [userId]);
-
-    if (offerCheck.rows.length === 0) {
-      return res.status(400).json({ success: false, error: 'You must offer help first before requesting help' });
-    }
-
-    // Additionally check if user's package has matured (if they have an active package)
+    // Check if user has an active matured package (strict requirement)
     const maturityCheck = await pool.query(`
       SELECT ha.id, ha.maturity_date,
              CASE 
@@ -893,21 +882,25 @@ app.post('/api/help/register-receive', authenticateToken, async (req, res) => {
              END as is_mature
       FROM help_activities ha
       WHERE ha.giver_id = $1 
-        AND ha.status IN ('active', 'completed')
+        AND ha.status = 'active'
         AND ha.maturity_date IS NOT NULL
       ORDER BY ha.created_at DESC
       LIMIT 1
     `, [userId]);
 
-    // If they have an active package with maturity date, ensure it has matured
-    if (maturityCheck.rows.length > 0) {
-      const maturity = maturityCheck.rows[0];
-      if (!maturity.is_mature) {
-        return res.status(400).json({ 
-          success: false, 
-          error: 'Your package has not matured yet. Please wait until the maturity date.' 
-        });
-      }
+    if (maturityCheck.rows.length === 0) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'You must have an active package to receive help. Please offer help first and wait for admin to match and confirm payment.' 
+      });
+    }
+
+    const maturity = maturityCheck.rows[0];
+    if (!maturity.is_mature) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Your package has not matured yet. Please wait until the maturity date.' 
+      });
     }
 
     // Check user's registered package - they can only receive for their registered package
@@ -2118,6 +2111,17 @@ app.post('/api/admin/payment-matches/:id/confirm', authenticateToken, requireAdm
         SET status = 'completed', updated_at = CURRENT_TIMESTAMP
         WHERE id = $1
       `, [receiverActivityResult.rows[0].id]);
+
+      // Also mark the giver's mature activity as completed so they can start a new cycle
+      // This allows the receiver (who was a giver before) to offer help again
+      await pool.query(`
+        UPDATE help_activities 
+        SET status = 'completed', updated_at = CURRENT_TIMESTAMP
+        WHERE giver_id = $1 
+          AND status = 'active'
+          AND maturity_date IS NOT NULL
+          AND maturity_date <= CURRENT_TIMESTAMP
+      `, [match.receiver_id]);
     }
 
     res.json({ 
