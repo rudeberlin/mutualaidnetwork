@@ -1,0 +1,60 @@
+name: Build, Migrate and Deploy
+
+on:
+  push:
+    branches: [ master, main ]
+
+jobs:
+  build-and-migrate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Use Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install root dependencies
+        run: npm ci
+
+      - name: Build frontend
+        run: npm run build:frontend
+
+      - name: Install backend dependencies
+        run: npm --prefix backend ci
+
+      - name: Run DB migration to update package interests
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: npm --prefix backend run migrate:update-package-interests
+
+      - name: Trigger Render deploy (optional)
+        if: ${{ secrets.RENDER_API_KEY && secrets.RENDER_SERVICE_ID }}
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+          RENDER_SERVICE_ID: ${{ secrets.RENDER_SERVICE_ID }}
+        run: |
+          curl -s -X POST \
+            -H "Accept: application/json" \
+            -H "Authorization: Bearer $RENDER_API_KEY" \
+            "https://api.render.com/v1/services/$RENDER_SERVICE_ID/deploys" \
+            -d '{}' || true
+
+      - name: Trigger Vercel deploy (optional)
+        if: ${{ secrets.VERCEL_TOKEN && secrets.VERCEL_PROJECT_ID }}
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: |
+          curl -s -X POST \
+            -H "Authorization: Bearer $VERCEL_TOKEN" \
+            -H "Content-Type: application/json" \
+            "https://api.vercel.com/v13/now/deployments?projectId=$VERCEL_PROJECT_ID" \
+            -d '{"target":"production"}' || true
+
+  # Note: This workflow requires secrets set in the repository settings:
+  # - DATABASE_URL (required for migration step)
+  # - (optional) RENDER_API_KEY and RENDER_SERVICE_ID to trigger Render
+  # - (optional) VERCEL_TOKEN and VERCEL_PROJECT_ID to trigger Vercel

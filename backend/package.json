@@ -6,7 +6,8 @@
   "type": "module",
   "scripts": {
     "start": "node server.js",
-    "dev": "node --watch server.js"
+    "dev": "node --watch server.js",
+    "migrate:update-package-interests": "node scripts/update_package_interests.js"
   },
   "keywords": ["mutual-aid", "help-network", "platform"],
   "author": "",
